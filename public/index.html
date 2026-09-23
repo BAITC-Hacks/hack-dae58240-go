@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>План закупок</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+<header><div><p class="eyebrow">Агент закупок</p><h1>План заказа поставщику</h1><p>Рекомендации по артикулам с прозрачным журналом расчёта</p></div><span id="demoBadge" class="badge" hidden>ДЕМО-РЕЖИМ</span></header>
+<section class="panel controls"><label>Поставщик<select id="supplier"></select></label><label>Горизонт, дней<input id="horizon" type="number" min="1" max="365" value="30"></label><button id="plan">Сформировать заказ</button><span id="working" role="status" hidden>Агент работает…</span></section>
+<p id="error" class="error" role="alert" hidden></p>
+<section class="panel"><h2>Ответ агента</h2><p id="answer">Выберите поставщика и запустите расчёт.</p></section>
+<section class="panel"><h2>Лог шагов агента</h2><ol id="trace" class="trace"><li>Шаги появятся после расчёта.</li></ol></section>
+<section class="panel"><div class="tableHead"><h2>Проект заказа</h2><button id="approve" disabled>Утвердить и выгрузить CSV</button></div><div class="tableWrap"><table><thead><tr><th>Артикул</th><th>Наименование</th><th>Остаток</th><th>В пути</th><th>Прогноз</th><th>Рекомендуемое кол-во</th><th>Срочность</th><th>Обоснование</th></tr></thead><tbody id="orders"><tr><td colspan="8">Пока нет расчёта</td></tr></tbody></table></div></section>
+</main><script src="/app.js" defer></script></body></html>
