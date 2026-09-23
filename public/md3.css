@@ -1,6 +1,6 @@
 /* Material Design 3 тема + дашборд на один экран.
    Подключается ПОСЛЕ style.css и переопределяет его: базовые стили не трогаем.
-   Токены — baseline-схема MD3 (primary #6750A4), тёмная тема через prefers-color-scheme. */
+   Токены — baseline-схема MD3 (primary #6750A4), тёмная тема по тумблеру ([data-theme=dark]). */
 :root {
   --md-sys-color-primary: #6750a4;
   --md-sys-color-on-primary: #ffffff;
@@ -40,8 +40,8 @@
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-surface);
 }
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Тёмная тема — только по тумблеру (public/theme.js), по умолчанию светлая */
+:root[data-theme="dark"] {
     --md-sys-color-primary: #d0bcff;
     --md-sys-color-on-primary: #381e72;
     --md-sys-color-primary-container: #4f378b;
@@ -69,7 +69,6 @@
     --md-sys-color-outline-variant: #49454f;
     color-scheme: dark;
   }
-}
 
 /* ---------- Типографика MD3 ---------- */
 body { background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-family: var(--md-font); }
@@ -242,3 +241,17 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
   .panel { padding: 12px 14px; }
   #skuPanel:not([hidden]) { border-radius: 0; }
 }
+
+/* ---------- Тумблер темы (MD3 switch, компактный) ---------- */
+.themeSwitch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 500 .75rem/1rem var(--md-font); color: var(--md-sys-color-on-surface-variant); user-select: none; }
+.themeSwitch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.themeTrack { position: relative; width: 36px; height: 20px; border-radius: var(--md-shape-full); background: var(--md-sys-color-surface-container-highest); box-shadow: inset 0 0 0 2px var(--md-sys-color-outline); transition: background-color .2s, box-shadow .2s; flex: none; }
+.themeThumb { position: absolute; top: 5px; left: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--md-sys-color-outline); transition: transform .2s, width .2s, height .2s, top .2s, background-color .2s; }
+.themeSwitch input:checked + .themeTrack { background: var(--md-sys-color-primary); box-shadow: none; }
+.themeSwitch input:checked + .themeTrack .themeThumb { top: 3px; width: 14px; height: 14px; transform: translateX(16px); background: var(--md-sys-color-on-primary); }
+.themeSwitch:hover .themeTrack { box-shadow: inset 0 0 0 2px var(--md-sys-color-on-surface-variant), 0 0 0 6px color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.themeSwitch input:checked:hover + .themeTrack, .themeSwitch:hover input:checked + .themeTrack { box-shadow: 0 0 0 6px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent); }
+.themeSwitch input:focus-visible + .themeTrack { outline: 2px solid var(--md-sys-color-primary); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .themeTrack, .themeThumb { transition: none; } }
+.headerRight { grid-auto-flow: row; }
+.trace li { background: var(--md-sys-color-surface-container-lowest); color: var(--md-sys-color-on-surface-variant); border-left-color: var(--md-sys-color-outline-variant); }
