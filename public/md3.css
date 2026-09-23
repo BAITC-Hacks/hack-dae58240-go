@@ -179,7 +179,7 @@ main, main:has(#advancedOrders:not([hidden])) {
 }
 main > .panel, main > header { margin: 0; }
 main > header { order: 0; } main > .controls { order: 1; } main > .error { order: 2; }
-main > .resultPanel { order: 3; } main > #advancedSummary { order: 4; } main > .attentionPanel { order: 5; }
+main > .resultPanel { order: 3; } main > .attentionPanel { order: 4; } main > #advancedSummary { order: 5; }
 main > #advancedOrders { order: 6; }
 main > .controls { max-width: none; }
 .resultPanel { padding: 24px 28px; }
@@ -276,3 +276,15 @@ select {
 .skuChart .lineFc { stroke-dasharray: 6 5; }
 .skuChart .axis { font: 400 10px var(--md-font); fill: var(--md-sys-color-on-surface-variant); text-anchor: middle; }
 .skuChart .axisLine { stroke: var(--md-sys-color-outline-variant); }
+
+/* ---------- Без отдельного режима: полный заказ раскрывается кнопкой внизу ---------- */
+.headerRight .modeSwitch { display: none; }
+.moreOrders { display: block; margin: 12px auto 0; padding: 10px 24px; min-height: 40px; border-radius: var(--md-shape-full);
+  background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); text-decoration: none; font-weight: 500; }
+.moreOrders:hover:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-secondary-container) 88%, var(--md-sys-color-on-secondary-container)); }
+#moreOrdersNote { text-align: center; margin: 12px 0 0; }
+/* карточки явно кликабельны */
+.attentionCard { position: relative; padding-right: 44px; cursor: pointer; transition: box-shadow .15s, background-color .15s; }
+.attentionCard::after { content: '›'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.75rem; line-height: 1; color: var(--md-sys-color-primary); }
+.attentionCard:hover { box-shadow: var(--md-elevation-1); }
+.attentionHint strong { color: var(--md-sys-color-primary); font-weight: 500; }

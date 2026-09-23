@@ -107,7 +107,7 @@ function renderAttention() {
   const attention = currentOrders.map((order, index) => ({ order, index }))
     .filter(({ order }) => (order.urgency === 'high' && order.abc !== 'C') || issuesFor(order.sku).length)
     .sort((x, y) => (rank[x.order.abc] ?? 3) - (rank[y.order.abc] ?? 3) || (y.order.urgency === 'high') - (x.order.urgency === 'high') || y.order.quantity - x.order.quantity);
-  const shown = attention.slice(0, 15);
+  const shown = attention.slice(0, 10);
   const cards = shown.map(({ order, index }) => {
     const card = document.createElement('article'); card.className = 'attentionCard'; card.tabIndex = 0;
     card.setAttribute('role', 'button'); card.setAttribute('aria-label', `Разбор артикула ${order.sku}`);
@@ -133,7 +133,7 @@ function renderAttention() {
     card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadSku(order.sku); } });
     return card;
   });
-  $('attention').replaceChildren(...(cards.length ? cards : [Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Позиций, требующих решения, нет — заказ можно проверить в расширенном режиме и утвердить.' })]));
+  $('attention').replaceChildren(...(cards.length ? cards : [Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Позиций, требующих решения, нет — полный заказ можно раскрыть ниже и утвердить.' })]));
   const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many;
   const attentionSet = new Set(attention.map(({ order }) => order.sku));
   const rest = currentOrders.filter(order => !attentionSet.has(order.sku));
@@ -143,8 +143,8 @@ function renderAttention() {
   if (urgentC) parts.push(`${urgentC} ${plural(urgentC, 'срочная мелкая позиция', 'срочные мелкие позиции', 'срочных мелких позиций')} класса C`);
   const routine = rest.length - urgentC;
   if (routine > 0) parts.push(`${routine} ${plural(routine, 'позиция', 'позиции', 'позиций')} средней и низкой срочности`);
-  $('moreOrders').textContent = `Ещё в заказе: ${parts.join(', ')} — смотреть в расширенном режиме`;
-  $('moreOrders').hidden = parts.length === 0;
+  $('moreOrdersNote').textContent = parts.length ? `Ещё в заказе: ${parts.join(', ')}.` : '';
+  updateMoreButton();
 }
 async function loadSuppliers() {
   startProgress('Читаю выгрузки 1С…', 'первый запуск до 10 с'); $('plan').disabled = true;
@@ -332,7 +332,13 @@ function startProgress(text, hint) {
   tick(); clearInterval(progressTimer); progressTimer = setInterval(tick, 1000);
 }
 function stopProgress() { clearInterval(progressTimer); progressTimer = null; $('progress').hidden = true; }
-$('moreOrders').addEventListener('click', () => setMode(true));
+// «Показать полный заказ» — раскрывает сводку и полную таблицу ниже (вместо отдельного режима)
+function updateMoreButton() {
+  $('moreOrders').textContent = advancedMode ? 'Скрыть полный заказ ▴' : `Показать полный заказ (${currentOrders.length} позиций) ▾`;
+  $('moreOrders').hidden = !currentOrders.length;
+  $('moreOrders').setAttribute('aria-expanded', String(advancedMode));
+}
+$('moreOrders').addEventListener('click', () => { setMode(!advancedMode); updateMoreButton(); if (advancedMode) $('advancedSummary').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 $('plan').addEventListener('click', async () => {
   showError(''); startProgress('Агент анализирует данные и формирует заказ…', 'обычно 15–30 с'); $('plan').disabled = true; $('approve').disabled = true; $('approveSimple').disabled = true; $('approveXlsx').disabled = true; $('openTrace').disabled = true; $('skuPanel').hidden = true;
   currentOrders = []; currentSummary = null; currentReview = null; plannedSupplier = null; $('reviewPanel').hidden = true;
@@ -378,8 +384,8 @@ function tickClock() {
   $('clock').dateTime = now.toISOString();
 }
 tickClock(); setInterval(tickClock, 15000);
-try { advancedMode = localStorage.getItem('purchasePlanMode') === 'advanced'; } catch { advancedMode = false; }
-setMode(advancedMode);
+advancedMode = false; // по умолчанию полный заказ свёрнут
+setMode(false);
 if (location.protocol === 'file:') {
   $('plan').disabled = true;
   showError('Для расчёта запустите приложение по README: npm start, затем откройте адрес сервера в браузере.');
