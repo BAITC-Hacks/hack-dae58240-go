@@ -25,6 +25,7 @@ const experimentLabels = {
   withoutTrend: 'Без тренда',
   injectedOneOff: 'С добавленной разовой продажей',
   inTransitPlus100: 'Товар в пути +100',
+  withoutCategory: 'Без категории (сезонность производителя)',
   naiveAverageForecast: 'Наивное среднее (оценка заказа)'
 };
 function showError(message) { $('error').textContent = message; $('error').hidden = !message; }
