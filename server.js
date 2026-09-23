@@ -101,7 +101,11 @@ function validPlan(input) {
     (input.horizonDays === undefined || Number.isInteger(input.horizonDays) && input.horizonDays >= 1 && input.horizonDays <= 365) &&
     (input.growthPct === undefined || typeof input.growthPct === 'number' && Number.isFinite(input.growthPct) && input.growthPct >= -99 && input.growthPct <= 1000);
 }
-app.get('/api/suppliers', (_req, res) => res.json({ suppliers: core.listSuppliers(), dataSource: loadAll().demo ? 'demo' : 'local' }));
+app.get('/api/suppliers', (_req, res) => {
+  const data = loadAll();
+  const demoData = data.demo || path.resolve(data.dir) === path.join(__dirname, 'data', 'demo');
+  res.json({ suppliers: core.listSuppliers(), dataSource: demoData ? 'demo' : 'local' });
+});
 app.get('/api/sku', (req, res) => {
   const { supplier, sku } = req.query;
   const horizonDays = req.query.horizonDays === undefined ? 30 : Number(req.query.horizonDays);

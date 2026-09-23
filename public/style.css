@@ -1,2 +1,37 @@
 :root{font-family:system-ui,-apple-system,sans-serif;color:#18243a;background:#f2f5f9}*{box-sizing:border-box}body{margin:0}main{max-width:1440px;margin:auto;padding:28px}header,.tableHead,.controls{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}header{margin-bottom:24px}h1{font-size:2rem;margin:4px 0}h2{font-size:1.2rem;margin:0 0 16px}h3{font-size:1rem;margin:28px 0 10px}.eyebrow{color:#1765b3;text-transform:uppercase;font-size:.75rem;font-weight:800;letter-spacing:.12em;margin:0}header p{margin:5px 0;color:#526078}.badges{display:flex;gap:8px;flex-wrap:wrap}.badge{background:#ffe4a6;color:#734b00;font-weight:800;padding:10px 14px;border-radius:8px}.badge.source{background:#e1edf9;color:#18588d}.panel{background:white;border:1px solid #dce3eb;border-radius:12px;padding:20px;margin:18px 0;box-shadow:0 2px 8px #15284a0a}label{display:grid;gap:6px;font-weight:650}select,input{border:1px solid #aebdcd;border-radius:7px;padding:10px;font:inherit;background:white}select{min-width:220px}button{background:#1765b3;border:0;color:white;border-radius:7px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer}button.secondary{background:#e8eef5;color:#234d77}button:disabled{opacity:.5;cursor:not-allowed}#working{color:#1765b3;font-weight:700}.error{background:#ffe2e2;color:#8c1919;padding:12px;border-radius:8px}.summary{display:flex;flex-wrap:wrap;gap:10px}.metric{display:grid;gap:3px;min-width:125px;padding:12px;background:#f2f6fa;border-radius:8px}.metric strong{font-size:1.3rem}.metric span{font-size:.8rem;color:#526078}.trace{padding-left:0;list-style:none;display:grid;gap:8px}.trace li{border-left:4px solid #86aad0;background:#f6f9fc;padding:10px 12px;display:grid;gap:3px;overflow-wrap:anywhere}.trace span{color:#526078;font-size:.9rem}.trace small{color:#6b4db6}.tableHead h2{margin:0}.tableWrap{overflow-x:auto;margin-top:18px}table{border-collapse:collapse;width:100%;min-width:1360px}table.detailTable{min-width:680px}th,td{text-align:left;border-bottom:1px solid #e2e8ef;padding:10px;vertical-align:top}th{background:#f6f9fc;font-size:.8rem;color:#526078}td input{width:95px}.orderRow{cursor:pointer}.orderRow:hover,.orderRow:focus{background:#eaf3fc;outline:none}.urgency{font-weight:800}.urgency.high{color:#b52121}.urgency.medium{color:#a86700}.urgency.low{color:#227143}.flags{white-space:nowrap}.flag{display:inline-block;margin:0 3px;font-size:1.1rem;cursor:help}.hint{color:#64748b;font-size:.85rem}@media(max-width:700px){main{padding:14px}h1{font-size:1.5rem}.controls{align-items:stretch}.controls>*{width:100%}}
 .trace{gap:0}.traceItem{list-style:none;margin:0;border-left:3px solid #9ab7d2;background:#f7f9fc;padding:12px 16px;position:relative}.traceItem.tool_call{margin-top:12px;border-radius:8px 8px 0 0;background:#edf4fb;border-left-color:#2870ae}.traceItem.tool_result{margin-left:24px;border-radius:0 0 8px 8px;border-left-color:#4a946b;background:#f4faf6}.traceItem.final{margin-top:12px;border-radius:8px;border-left-color:#8764bc;background:#f6f2fc}.traceHeader{display:flex;align-items:center;gap:8px}.traceHeader strong{font-size:.9rem}.traceHeader small{color:#6b7687;font-size:.75rem}.traceIcon{font-size:1.15rem}.traceText{font-size:1rem;line-height:1.5;margin:8px 0;color:#18243a;overflow-wrap:anywhere}.traceUsage{display:block;color:#6b4db6;font-size:.75rem}.traceDetails{margin-top:8px;color:#66758a;font-size:.75rem}.traceDetails summary{cursor:pointer}.traceDetails pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#e8eef5;border-radius:6px;padding:8px;margin:6px 0 0;font-size:.72rem}@media(max-width:700px){.traceItem.tool_result{margin-left:12px}}
+[hidden]{display:none!important}
+.headerRight{display:grid;justify-items:end;gap:10px;min-width:0}
+.headerRight .badges{justify-content:flex-end}
+.controls{justify-content:flex-start;align-items:end}
+.supplierControl{flex:1;min-width:220px}
+.supplierControl select{width:100%}
+.parameters{flex-basis:100%;color:#345b83}
+.parameters>summary,.tracePanel summary{cursor:pointer;font-weight:700}
+.parameterFields{display:flex;gap:14px;flex-wrap:wrap;padding-top:14px}
+.parameterFields label{min-width:180px}
+.resultPanel{border-color:#bad4ea;background:linear-gradient(145deg,#fff,#f7fbff)}
+.simpleSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.simpleSummary>span{grid-column:1/-1}
+.simpleSummary .metric{min-width:0;padding:18px;background:#eaf3fc}
+.simpleSummary .metric strong{font-size:2rem;line-height:1.1;color:#164e81}
+.agentAnswer{line-height:1.6;max-width:850px;margin:22px 0;white-space:pre-wrap}
+.primaryAction{font-size:1.05rem;padding:15px 22px;min-height:50px}
+.attentionList{display:grid;gap:10px}
+.attentionCard{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;border:1px solid #d8e4ef;border-left:4px solid #c33939;border-radius:9px;background:#fafcfe;cursor:pointer;min-width:0}
+.attentionCard:hover,.attentionCard:focus{background:#edf6ff;outline:2px solid #83b5df}
+.attentionInfo{min-width:0}
+.attentionInfo h3{margin:0 0 6px;font-size:1rem;overflow-wrap:anywhere}
+.attentionInfo strong{color:#a52323}
+.attentionReason{color:#596b7e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:5px 0 0;max-width:800px;font-size:.88rem}
+.attentionCard label{font-size:.8rem;white-space:nowrap;flex:0 0 140px}
+.attentionCard input{width:100%}
+.moreOrders{display:block;margin:16px 0 0;padding:0;border:0;background:none;color:#1765b3;text-align:left;font-size:.88rem;font-weight:700;text-decoration:underline}
+.tracePanel details>summary{font-size:1.1rem;color:#234d77}
+@media(max-width:700px){
+  header{align-items:flex-start}.headerRight{justify-items:start;width:100%}.headerRight .badges{justify-content:flex-start}
+  .controls>*{width:auto}.supplierControl,.controls #plan,.parameters{width:100%}
+  .simpleSummary{gap:6px}.simpleSummary .metric{padding:10px 7px}.simpleSummary .metric strong{font-size:1.45rem}.simpleSummary .metric span{font-size:.7rem}
+  .attentionCard{display:grid;gap:12px}.attentionCard label{width:100%;max-width:180px}
+  .primaryAction{width:100%}
+}
