@@ -216,6 +216,35 @@ function renderOrders() {
   }));
   refreshSimpleSummary();
 }
+// График спроса: столбики — фактические продажи, линия — спрос после очистки (без разовых,
+// с восстановленным упущенным спросом), пунктир — прогноз. Подпись — устойчивый тренд.
+function renderSkuChart(data) {
+  const history = data.details?.history || [];
+  const forecast = Object.entries(data.details?.forecastByMonth || {});
+  const fig = $('skuChart');
+  if (!history.length) { fig.replaceChildren(); return; }
+  // прогноз по месяцам приходит за неполные месяцы периода — приводим к месячному темпу
+  const days = (data.details.leadTimeDays || 0) + (data.details.horizonDays || 0);
+  const perMonth = days ? data.forecast / days * 30.4 : 0;
+  const points = [...history.map(h => ({ m: h.month, raw: h.raw, clean: h.restored })), ...forecast.slice(0, 3).map(([m]) => ({ m, fc: perMonth }))];
+  const max = Math.max(1, ...points.map(p => Math.max(p.raw || 0, p.clean || 0, p.fc || 0)));
+  const W = 640, H = 180, L = 36, B = 22, T = 10, step = (W - L - 8) / points.length, y = v => T + (H - T - B) * (1 - v / max);
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const bars = points.map((p, i) => p.raw != null ? `<rect x="${L + i * step + step * .2}" y="${y(p.raw)}" width="${step * .6}" height="${Math.max(0, H - B - y(p.raw))}" rx="2" class="barRaw"><title>${esc(p.m)}: продано ${p.raw}</title></rect>` : '').join('');
+  const hist = points.filter(p => p.clean != null).map((p, i) => `${L + i * step + step / 2},${y(p.clean)}`);
+  const lastIdx = history.length - 1;
+  const fc = [`${L + lastIdx * step + step / 2},${y(history[lastIdx].restored)}`, ...points.slice(history.length).map((p, i) => `${L + (history.length + i) * step + step / 2},${y(p.fc)}`)];
+  const labels = points.map((p, i) => i % 2 === 0 || i >= history.length ? `<text x="${L + i * step + step / 2}" y="${H - 6}" class="axis">${esc(p.m.slice(2).replace('-', '.'))}</text>` : '').join('');
+  const trend = data.details.trendMonthlyPct || 0;
+  const trendText = trend > 0 ? `↗ Устойчивый рост +${trend}%/мес` : trend < 0 ? `↘ Устойчивый спад ${trend}%/мес` : '→ Стабильный спрос (устойчивого тренда нет)';
+  fig.innerHTML = `<figcaption><span class="trend ${trend > 0 ? 'up' : trend < 0 ? 'down' : ''}">${trendText}</span>
+    <span class="legend"><i class="lgRaw"></i>продажи факт <i class="lgClean"></i>спрос после очистки <i class="lgFc"></i>прогноз, шт/мес</span></figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(trendText)}">
+      <line x1="${L}" x2="${W - 8}" y1="${H - B}" y2="${H - B}" class="axisLine"/>
+      <text x="${L - 6}" y="${T + 8}" class="axis" text-anchor="end">${Math.round(max)}</text><text x="${L - 6}" y="${H - B}" class="axis" text-anchor="end">0</text>
+      ${bars}<polyline points="${hist.join(' ')}" class="lineClean"/><polyline points="${fc.join(' ')}" class="lineFc"/>${labels}
+    </svg>`;
+}
 function renderSku(data) {
   $('skuTitle').textContent = `Разбор артикула: ${data.sku} · ${data.name}`;
   $('skuFacts').replaceChildren(
@@ -223,6 +252,7 @@ function renderSku(data) {
     metric('Страховой запас', data.safetyStock), metric('Кратность', data.moq),
     metric('Класс ABC', data.abc), metric('Срок поставки, дней', data.details?.leadTimeDays)
   );
+  renderSkuChart(data);
   $('history').replaceChildren(...(data.details?.history || []).map(h => row([h.month, h.raw, h.cleaned, h.restored, h.stockStart])));
   $('forecastByMonth').replaceChildren(...Object.entries(data.details?.forecastByMonth || {}).map(([month, forecast]) => row([month, forecast])));
   const oneOffs = data.details?.oneOffs || [];
