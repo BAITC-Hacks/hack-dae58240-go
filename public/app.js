@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 let currentOrders = [];
+let plannedSupplier = null;
 const urgencyText = { high: 'Высокая', medium: 'Средняя', low: 'Низкая' };
 function showError(message) { $('error').textContent = message; $('error').hidden = !message; }
 async function loadSuppliers() {
@@ -46,15 +47,19 @@ function renderOrders() {
 }
 $('plan').addEventListener('click', async () => {
   showError(''); $('working').hidden = false; $('plan').disabled = true; $('approve').disabled = true;
+  currentOrders = [];
+  plannedSupplier = null;
   try {
+    const supplier = $('supplier').value;
     const response = await fetch('/api/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supplier: $('supplier').value, horizonDays: Number($('horizon').value) }) });
+      body: JSON.stringify({ supplier, horizonDays: Number($('horizon').value) }) });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Ошибка расчёта');
     $('demoBadge').hidden = !data.demoMode;
     $('answer').textContent = data.answer;
     renderTrace(data.trace);
     currentOrders = data.orders;
+    plannedSupplier = supplier;
     renderOrders();
   } catch (error) { showError(error.message); }
   finally { $('working').hidden = true; $('plan').disabled = false; }
@@ -63,7 +68,7 @@ $('approve').addEventListener('click', async () => {
   showError('');
   if (!currentOrders.every(row => Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000)) return showError('Проверьте количества в таблице.');
   try {
-    const response = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: $('supplier').value, orders: currentOrders }) });
+    const response = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: plannedSupplier, orders: currentOrders }) });
     if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Ошибка выгрузки'); }
     const blob = await response.blob(); const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `order-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
