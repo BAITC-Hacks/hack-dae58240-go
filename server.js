@@ -6,6 +6,7 @@ const path = require('node:path');
 const core = require('./lib/core');
 const { review_order } = require('./lib/review');
 const { loadAll } = require('./lib/data');
+const { toXlsx } = require('./lib/export');
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
@@ -211,10 +212,14 @@ function csvCell(value) {
   const safe = String(value ?? '').replace(/^[=+@\-\t\r]/, "'$&");
   return `"${safe.replace(/"/g, '""')}"`;
 }
+function validApproval(body) {
+  const { supplier, orders } = body || {};
+  return typeof supplier === 'string' && core.listSuppliers().some(item => item.id === supplier) && Array.isArray(orders) && orders.length > 0 && orders.length <= 1000 &&
+    orders.every(row => row && typeof row.sku === 'string' && Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000);
+}
 app.post('/api/approve', (req, res) => {
   const { supplier, orders } = req.body || {};
-  if (typeof supplier !== 'string' || !core.listSuppliers().some(item => item.id === supplier) || !Array.isArray(orders) || !orders.length || orders.length > 1000 ||
-      !orders.every(row => row && typeof row.sku === 'string' && Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000)) {
+  if (!validApproval(req.body)) {
     return res.status(400).json({ error: 'Некорректный заказ.' });
   }
   const columns = ['sku', 'name', 'supplier', 'stock', 'inTransit', 'forecast', 'safetyStock', 'moq', 'abc', 'quantity', 'urgency', 'flags', 'rationale'];
@@ -223,5 +228,23 @@ app.post('/api/approve', (req, res) => {
   const filename = `order-${Date.now()}.csv`;
   fs.writeFileSync(path.join(__dirname, 'exports', filename), csv, { flag: 'wx' });
   res.download(path.join(__dirname, 'exports', filename), filename);
+});
+app.post('/api/approve/xlsx', (req, res) => {
+  if (!validApproval(req.body)) return res.status(400).json({ error: 'Некорректный заказ.' });
+  const { supplier, orders, horizonDays, growthPct } = req.body;
+  const asOf = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.asOf || '')) ? req.body.asOf : new Date().toISOString().slice(0, 10);
+  const safeSupplier = supplier.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'manufacturer';
+  const filename = `order_${safeSupplier}_${asOf}.xlsx`;
+  try {
+    const buffer = toXlsx({ supplier, orders, asOf, horizonDays, growthPct });
+    fs.mkdirSync(path.join(__dirname, 'exports'), { recursive: true });
+    const file = path.join(__dirname, 'exports', filename);
+    fs.writeFileSync(file, buffer);
+    res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    return res.download(file, filename);
+  } catch (error) {
+    console.error('[XLSX EXPORT ERROR]', error.message);
+    return res.status(500).json({ error: 'Не удалось выгрузить XLSX.' });
+  }
 });
 app.listen(port, () => console.log(demoMode ? '[DEMO MODE] OPENAI_API_KEY не задан' : `[LIVE] модель ${model}`));
