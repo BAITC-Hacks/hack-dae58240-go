@@ -100,14 +100,22 @@ function renderReview(review) {
   }) : [Object.assign(document.createElement('li'), { textContent: 'Замечаний не найдено.' })]));
 }
 function renderAttention() {
-  const urgent = currentOrders.map((order, index) => ({ order, index })).filter(({ order }) => order.urgency === 'high');
-  const cards = urgent.slice(0, 10).map(({ order, index }) => {
+  // Внимание менеджера — там, где цена ошибки высокая или есть сомнения:
+  // срочные позиции классов A и B (≈95% объёма продаж) + всё, где самопроверка агента нашла замечание.
+  // Срочная мелочь класса C уже включена в заказ и не требует решения по каждой позиции.
+  const rank = { A: 0, B: 1, C: 2 };
+  const attention = currentOrders.map((order, index) => ({ order, index }))
+    .filter(({ order }) => (order.urgency === 'high' && order.abc !== 'C') || issuesFor(order.sku).length)
+    .sort((x, y) => (rank[x.order.abc] ?? 3) - (rank[y.order.abc] ?? 3) || (y.order.urgency === 'high') - (x.order.urgency === 'high') || y.order.quantity - x.order.quantity);
+  const shown = attention.slice(0, 15);
+  const cards = shown.map(({ order, index }) => {
     const card = document.createElement('article'); card.className = 'attentionCard'; card.tabIndex = 0;
     card.setAttribute('role', 'button'); card.setAttribute('aria-label', `Разбор артикула ${order.sku}`);
     const info = document.createElement('div'); info.className = 'attentionInfo';
     const name = document.createElement('h3'); name.textContent = order.name;
     const amount = document.createElement('strong'); amount.textContent = `Заказать ${order.quantity} шт`;
-    const reason = document.createElement('p'); reason.className = 'attentionReason'; reason.textContent = attentionReason(order.flags);
+    const reason = document.createElement('p'); reason.className = 'attentionReason';
+    reason.textContent = `Класс ${order.abc || '—'} · ${order.urgency === 'high' ? 'срочно' : 'проверить'} · ${attentionReason(order.flags)}`;
     info.append(name, amount, reason);
     const issues = issuesFor(order.sku);
     if (issues.length) {
@@ -125,11 +133,18 @@ function renderAttention() {
     card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadSku(order.sku); } });
     return card;
   });
-  $('attention').replaceChildren(...(cards.length ? cards : [Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Срочных позиций нет.' })]));
-  const other = currentOrders.filter(order => order.urgency !== 'high').length;
-  const noun = other % 10 === 1 && other % 100 !== 11 ? 'позиция' : other % 10 >= 2 && other % 10 <= 4 && (other % 100 < 12 || other % 100 > 14) ? 'позиции' : 'позиций';
-  $('moreOrders').textContent = `Ещё ${other} ${noun} средней и низкой срочности — смотреть в расширенном режиме`;
-  $('moreOrders').hidden = other === 0;
+  $('attention').replaceChildren(...(cards.length ? cards : [Object.assign(document.createElement('p'), { className: 'hint', textContent: 'Позиций, требующих решения, нет — заказ можно проверить в расширенном режиме и утвердить.' })]));
+  const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many;
+  const attentionSet = new Set(attention.map(({ order }) => order.sku));
+  const rest = currentOrders.filter(order => !attentionSet.has(order.sku));
+  const urgentC = rest.filter(order => order.urgency === 'high').length;
+  const parts = [];
+  if (attention.length > shown.length) parts.push(`${attention.length - shown.length} ${plural(attention.length - shown.length, 'важная позиция', 'важные позиции', 'важных позиций')}`);
+  if (urgentC) parts.push(`${urgentC} ${plural(urgentC, 'срочная мелкая позиция', 'срочные мелкие позиции', 'срочных мелких позиций')} класса C`);
+  const routine = rest.length - urgentC;
+  if (routine > 0) parts.push(`${routine} ${plural(routine, 'позиция', 'позиции', 'позиций')} средней и низкой срочности`);
+  $('moreOrders').textContent = `Ещё в заказе: ${parts.join(', ')} — смотреть в расширенном режиме`;
+  $('moreOrders').hidden = parts.length === 0;
 }
 async function loadSuppliers() {
   startProgress('Читаю выгрузки 1С…', 'первый запуск до 10 с'); $('plan').disabled = true;
