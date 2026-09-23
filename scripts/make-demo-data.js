@@ -41,7 +41,7 @@ function makeManufacturer(label, prefix, codeBase, scale) {
   fs.mkdirSync(dir, { recursive: true });
   const months = []; for (let d = new Date(START); d <= AS_OF; d.setMonth(d.getMonth() + 1)) months.push(ym(d));
   const skus = SCENARIOS.map((s, i) => ({ ...s, code: `${codeBase}${String(i + 1).padStart(4, '0')}_`, article: `${prefix}-${1000 + i * 7}`, name: `${s.name} ${label.split(' ')[0]}` }));
-  const lines = []; const monthlySales = {}; const monthlyStock = {}; const transit = {};
+  const lines = []; const monthlySales = {}; const monthlyStock = {}; const transit = {}; const freeStock = {};
   let doc = 20000001000 + codeBase.length * 1000;
   const brandMonthMoney = {};
   for (const s of skus) {
@@ -78,6 +78,7 @@ function makeManufacturer(label, prefix, codeBase, scale) {
     }
     if (s.lowStockNow) stock = Math.round(base * 3);
     transit[s.code] = s.bigTransit ? s.bigTransit * scale : pending.reduce((a, p) => a + p.qty, 0);
+    freeStock[s.code] = stock; // текущий свободный остаток на дату выгрузки (как колонка у Systeme Electric)
   }
   const write = (file, rows, sheet = 'Лист_1') => { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sheet); XLSX.writeFile(wb, path.join(dir, file), { compression: true }); };
   const mHead = months.map(m => `${MONTHS_RU[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}`);
@@ -92,8 +93,8 @@ function makeManufacturer(label, prefix, codeBase, scale) {
   const years = ['2024', '2025', '2026'];
   write('Сезонность (демо).xlsx', [[], [], ['год', ...SHORT, 'ИТОГО'],
     ...years.map(y => { const v = SHORT.map((_, i) => { const m = `${y}-${String(i + 1).padStart(2, '0')}`; return m < ym(AS_OF) ? Math.round(brandMonthMoney[m] || 0) : ''; }); return [y, ...v, v.reduce((a, b) => a + (b || 0), 0)]; })], 'Сезонность');
-  write('Товар в пути (демо).xlsx', [['Код 1с', 'Артикул', 'Наименование', 'УТ-0001 от 15 сентября 2026 г. (поступление до 15.10.2026)'],
-    ...skus.map(s => [s.code, s.article, s.name, transit[s.code] || ''])], 'Лист1');
+  write('Товар в пути (демо).xlsx', [['Код 1с', 'Артикул', 'Наименование', 'УТ-0001 от 15 сентября 2026 г. (поступление до 15.10.2026)', 'Свободный остаток'],
+    ...skus.map(s => [s.code, s.article, s.name, transit[s.code] || '', freeStock[s.code]])], 'Лист1');
   write('MOQ (демо).xlsx', [['№', 'Код 1с', 'Артикул поставщика', 'Наименование', 'Мин. разр. к отгр.'], ...skus.map((s, i) => [i + 1, s.code, s.article, s.name, s.moq])], 'Лист1');
   console.log(`${label}: ${skus.length} артикулов, ${lines.length} строк накладных`);
 }
