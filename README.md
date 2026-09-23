@@ -160,6 +160,8 @@ server.js                                      Express API + агентный ц
         │  вызов инструментов
         ▼
 lib/core.js    расчётное ядро: list_skus, analyze_sku, calc_order, build_supplier_orders
+lib/review.js  самопроверка готового заказа агентом: review_order
+lib/export.js  выгрузка xlsx с листом «Для загрузки в 1С»
         │
         ▼
 lib/data.js    парсер xlsx-выгрузок 1С → нормализованные данные (кэш в памяти)
