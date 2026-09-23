@@ -4,3 +4,7 @@ AGENTS.md
 JOURNAL.md
 *.log
 .DS_Store
+
+# Данные партнёра — конфиденциально, НЕ коммитить
+заказчик/
+data/private/
