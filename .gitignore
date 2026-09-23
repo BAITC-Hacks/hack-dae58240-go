@@ -1,0 +1,6 @@
+node_modules/
+.env
+AGENTS.md
+JOURNAL.md
+*.log
+.DS_Store
