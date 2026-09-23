@@ -52,15 +52,28 @@ function renderSummary(summary) {
 }
 function renderTrace(trace) {
   $('trace').replaceChildren(...trace.map(entry => {
-    const li = document.createElement('li');
-    const label = document.createElement('strong');
-    label.textContent = `${entry.step}. ${entry.type === 'tool_call' ? 'Вызов' : entry.type === 'tool_result' ? 'Результат' : 'Ответ'} · ${entry.name}`;
-    const detail = document.createElement('span'); detail.textContent = entry.args ? JSON.stringify(entry.args) : entry.summary || '';
-    li.append(label, detail);
+    const li = document.createElement('li'); li.className = `traceItem ${entry.type}`;
+    const header = document.createElement('div'); header.className = 'traceHeader';
+    const icon = document.createElement('span'); icon.className = 'traceIcon';
+    icon.textContent = entry.type === 'tool_call' ? '🔧' : entry.type === 'tool_result' ? '📊' : '💬';
+    const step = document.createElement('strong'); step.textContent = `Шаг ${entry.step}`;
+    const name = document.createElement('small'); name.textContent = entry.name;
+    header.append(icon, step, name);
+    const explanation = document.createElement('p'); explanation.className = 'traceText';
+    explanation.textContent = entry.text || entry.summary || '';
+    li.append(header, explanation);
     if (entry.usage) {
       const usage = document.createElement('small');
+      usage.className = 'traceUsage';
       usage.textContent = `Токены: вход ${entry.usage.prompt_tokens ?? '—'}, выход ${entry.usage.completion_tokens ?? '—'}`;
       li.append(usage);
+    }
+    if (entry.args || entry.summary) {
+      const details = document.createElement('details'); details.className = 'traceDetails';
+      const title = document.createElement('summary'); title.textContent = 'Технические детали';
+      const raw = document.createElement('pre');
+      raw.textContent = [entry.args ? `Аргументы: ${JSON.stringify(entry.args)}` : '', entry.summary ? `Результат: ${entry.summary}` : ''].filter(Boolean).join('\n');
+      details.append(title, raw); li.append(details);
     }
     return li;
   }));

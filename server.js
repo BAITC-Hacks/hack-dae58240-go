@@ -26,6 +26,48 @@ function compact(value) {
   return json.length <= 4000 ? json : JSON.stringify({ truncated: true, preview: json.slice(0, 3800) });
 }
 const summarize = value => typeof value === 'string' ? value.slice(0, 180) : compact(value).slice(0, 180);
+const fmt = value => Number(value || 0).toLocaleString('ru-RU').replace(/[\u00a0\u202f]/g, ' ');
+const urgencyText = { high: 'высокая', medium: 'средняя', low: 'низкая' };
+function toolCallText(name, args, skuNames) {
+  if (name === 'list_skus') return `Запрашиваю сводку по производителю ${args.supplier} (горизонт ${fmt(args.horizonDays)} дн, прирост ${fmt(args.growthPct)}%).`;
+  if (name === 'analyze_sku') return `Разбираю артикул ${args.sku}${skuNames.get(args.sku) ? ` — ${skuNames.get(args.sku).slice(0, 50)}` : ''}.`;
+  if (name === 'calc_order') return `Рассчитываю заказ для артикула ${args.sku}.`;
+  if (name === 'build_supplier_orders') return `Собираю итоговый заказ по производителю ${args.supplier}.`;
+  return `Вызываю инструмент ${name}.`;
+}
+function toolResultText(name, result, args) {
+  if (result?.error) return `Ошибка инструмента ${name}: ${result.error}`;
+  if (name === 'list_skus') {
+    const s = result.summary || {};
+    const risky = (result.skus || []).slice(0, 3).map(row => row.sku).join(', ');
+    return `Активных артикулов ${fmt(s.activeSkus)}, к заказу ${fmt(s.toOrder)}, срочных ${fmt(s.urgent)}; разовые продажи исключены у ${fmt(s.withOneOffsExcluded)}, упущенный спрос восстановлен у ${fmt(s.withLostDemand)}.${risky ? ` Рисковые: ${risky}.` : ''}`;
+  }
+  if (name === 'analyze_sku' || name === 'calc_order') {
+    const days = (result.details?.leadTimeDays || 0) + (result.details?.horizonDays || args.horizonDays || 0);
+    const parts = [`Заказ ${fmt(result.quantity)} шт (срочность: ${urgencyText[result.urgency] || result.urgency}).`,
+      `Прогноз ${fmt(result.forecast)} на ${fmt(days)} дн, страх. запас ${fmt(result.safetyStock)}, остаток ${fmt(result.stock)}, в пути ${fmt(result.inTransit)}.`];
+    const flags = result.flags || [];
+    if (flags.includes('one_off_excluded')) {
+      const oneOffs = result.details?.oneOffs || [];
+      const without = result.experiments?.withoutOneOffFilter?.quantity;
+      parts.push(`Исключено разовых: ${fmt(oneOffs.length)} накл.${without === undefined ? '' : ` (без фильтра заказ был бы ${fmt(without)})`}.`);
+    }
+    if (flags.includes('stockout_history')) {
+      const lost = result.details?.lostDemand || [];
+      const units = Math.round(lost.reduce((sum, item) => sum + item.restored - item.sold, 0));
+      parts.push(`Упущенный спрос: +${fmt(units)} шт за ${fmt(lost.length)} мес.`);
+    }
+    if (flags.includes('seasonal')) parts.push(`Сезонность: ${result.details?.seasonSource || 'учтена'}.`);
+    if (flags.includes('growth') || flags.includes('decline')) parts.push(`Тренд: ${fmt(result.details?.trendMonthlyPct)}% в месяц.`);
+    return parts.join(' ');
+  }
+  if (name === 'build_supplier_orders') {
+    const orders = result.orders || [];
+    const urgent = orders.filter(row => row.urgency === 'high').length;
+    return `Готово: ${fmt(result.count ?? orders.length)} позиций, ${fmt(result.totalUnits ?? orders.reduce((sum, row) => sum + row.quantity, 0))} единиц, из них срочных ${fmt(urgent)}.`;
+  }
+  return 'Инструмент вернул результат.';
+}
 function forModel(name, result) {
   if (name === 'analyze_sku' && !result.error) {
     const { sku, name: skuName, forecast, safetyStock, quantity, urgency, flags, rationale, details, experiments } = result;
@@ -41,12 +83,18 @@ function forModel(name, result) {
   }
   return result;
 }
-function callTool(name, args, trace) {
-  if (!toolNames.has(name)) throw new Error('Неизвестный инструмент');
-  trace.push({ step: trace.length + 1, type: 'tool_call', name, args });
-  const result = core[name](args);
-  trace.push({ step: trace.length + 1, type: 'tool_result', name, summary: summarize(result) });
-  return result;
+function callTool(name, args, trace, skuNames) {
+  trace.push({ step: trace.length + 1, type: 'tool_call', name, args, text: toolCallText(name, args, skuNames) });
+  try {
+    if (!toolNames.has(name)) throw new Error('Неизвестный инструмент');
+    const result = core[name](args);
+    if (name === 'list_skus') for (const row of result.skus || []) skuNames.set(row.sku, row.name);
+    trace.push({ step: trace.length + 1, type: 'tool_result', name, summary: summarize(result), text: toolResultText(name, result, args) });
+    return result;
+  } catch (error) {
+    trace.push({ step: trace.length + 1, type: 'tool_result', name, summary: error.message, text: `Ошибка инструмента ${name}: ${error.message}` });
+    throw error;
+  }
 }
 function validPlan(input) {
   return input && typeof input.supplier === 'string' && core.listSuppliers().some(item => item.id === input.supplier) &&
@@ -68,16 +116,17 @@ app.post('/api/plan', async (req, res) => {
   if (!validPlan(req.body)) return res.status(400).json({ error: 'Укажите известного производителя, horizonDays от 1 до 365 и growthPct от −99 до 1000.' });
   const { supplier, horizonDays = 30, growthPct = 0 } = req.body;
   const trace = [];
+  const skuNames = new Map();
   try {
     let orders;
     let answer;
     let summary;
     if (demoMode) {
-      const listed = callTool('list_skus', { supplier, horizonDays, growthPct }, trace);
+      const listed = callTool('list_skus', { supplier, horizonDays, growthPct }, trace, skuNames);
       summary = listed.summary;
       const risky = listed.skus.filter(item => item.flags?.length).slice(0, 3);
-      for (const item of risky) callTool('analyze_sku', { supplier, sku: item.sku, horizonDays, growthPct }, trace);
-      orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace).orders;
+      for (const item of risky) callTool('analyze_sku', { supplier, sku: item.sku, horizonDays, growthPct }, trace, skuNames);
+      orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace, skuNames).orders;
       answer = `[DEMO] Сформирован проект заказа для производителя ${supplier}. Расчёты выполнены локальным ядром; текст ответа задан заранее. Проверьте и измените количества перед утверждением.`;
     } else {
       const messages = [
@@ -93,7 +142,7 @@ app.post('/api/plan', async (req, res) => {
         messages.push(message);
         if (!message.tool_calls?.length) {
           answer = message.content || 'Проект заказа рассчитан.';
-          trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: summarize(answer), usage });
+          trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: summarize(answer), text: answer.slice(0, 200), usage });
           break;
         }
         for (const call of message.tool_calls) {
@@ -102,7 +151,7 @@ app.post('/api/plan', async (req, res) => {
           const args = { supplier, horizonDays, growthPct };
           if (typeof requested.sku === 'string') args.sku = requested.sku;
           let result;
-          try { result = callTool(call.function.name, args, trace); }
+          try { result = callTool(call.function.name, args, trace, skuNames); }
           catch (error) { result = { error: error.message }; }
           if (call.function.name === 'list_skus' && result.summary) summary = result.summary;
           if (call.function.name === 'build_supplier_orders' && Array.isArray(result.orders)) orders = result.orders;
@@ -110,14 +159,14 @@ app.post('/api/plan', async (req, res) => {
           messages.push({ role: 'tool', tool_call_id: call.id, content: compact(forModel(call.function.name, result)) });
         }
       }
-      if (!orders) orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace).orders;
-      if (!summary) summary = callTool('list_skus', { supplier, horizonDays, growthPct }, trace).summary;
+      if (!orders) orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace, skuNames).orders;
+      if (!summary) summary = callTool('list_skus', { supplier, horizonDays, growthPct }, trace, skuNames).summary;
       if (!answer) {
         answer = 'Достигнут лимит шагов агента. Проект заказа рассчитан локальным ядром; проверьте строки.';
-        trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer });
+        trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer, text: answer.slice(0, 200) });
       }
     }
-    if (demoMode) trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer });
+    if (demoMode) trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer, text: answer.slice(0, 200) });
     return res.json({ demoMode, answer, orders, summary, trace });
   } catch (error) {
     console.error('[PLAN ERROR]', error.message);
