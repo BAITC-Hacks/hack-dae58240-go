@@ -38,7 +38,7 @@ function setMode(advanced) {
   $('advancedOrders').hidden = !advanced;
   $('modeToggle').textContent = advanced ? 'Простой режим' : 'Расширенный режим';
   $('modeToggle').setAttribute('aria-pressed', String(advanced));
-  $('traceDetails').open = advanced;
+  $('traceDetails').open = advanced || matchMedia('(min-width: 1024px)').matches; // на дашборде лог — отдельная колонка
   $('traceTitle').textContent = advanced ? 'Лог шагов агента' : `Как агент пришёл к результату (${$('trace').children.length === 1 && !plannedSupplier ? 0 : $('trace').children.length} шагов)`;
   try { localStorage.setItem('purchasePlanMode', advanced ? 'advanced' : 'simple'); } catch { /* хранение режима необязательно */ }
 }

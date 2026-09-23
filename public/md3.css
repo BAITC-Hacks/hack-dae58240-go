@@ -1,0 +1,243 @@
+/* Material Design 3 тема + дашборд на один экран.
+   Подключается ПОСЛЕ style.css и переопределяет его: базовые стили не трогаем.
+   Токены — baseline-схема MD3 (primary #6750A4), тёмная тема через prefers-color-scheme. */
+:root {
+  --md-sys-color-primary: #6750a4;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #eaddff;
+  --md-sys-color-on-primary-container: #21005d;
+  --md-sys-color-secondary-container: #e8def8;
+  --md-sys-color-on-secondary-container: #1d192b;
+  --md-sys-color-tertiary-container: #ffd8e4;
+  --md-sys-color-on-tertiary-container: #31111d;
+  --md-sys-color-error: #b3261e;
+  --md-sys-color-error-container: #f9dedc;
+  --md-sys-color-on-error-container: #410e0b;
+  --md-sys-color-warn-container: #ffe08b;
+  --md-sys-color-on-warn-container: #3d2f00;
+  --md-sys-color-ok-container: #c4eed0;
+  --md-sys-color-on-ok-container: #002111;
+  --md-sys-color-surface: #fef7ff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f2fa;
+  --md-sys-color-surface-container: #f3edf7;
+  --md-sys-color-surface-container-high: #ece6f0;
+  --md-sys-color-surface-container-highest: #e6e0e9;
+  --md-sys-color-on-surface: #1d1b20;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #cac4d0;
+  --md-elevation-1: 0 1px 2px rgba(0, 0, 0, .3), 0 1px 3px 1px rgba(0, 0, 0, .15);
+  --md-elevation-3: 0 4px 8px 3px rgba(0, 0, 0, .15), 0 1px 3px rgba(0, 0, 0, .3);
+  --md-shape-s: 8px;
+  --md-shape-m: 12px;
+  --md-shape-l: 16px;
+  --md-shape-full: 999px;
+  --md-font: 'Roboto', system-ui, -apple-system, sans-serif;
+  --md-font-mono: 'Roboto Mono', ui-monospace, monospace;
+  color-scheme: light;
+  font-family: var(--md-font);
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #d0bcff;
+    --md-sys-color-on-primary: #381e72;
+    --md-sys-color-primary-container: #4f378b;
+    --md-sys-color-on-primary-container: #eaddff;
+    --md-sys-color-secondary-container: #4a4458;
+    --md-sys-color-on-secondary-container: #e8def8;
+    --md-sys-color-tertiary-container: #633b48;
+    --md-sys-color-on-tertiary-container: #ffd8e4;
+    --md-sys-color-error: #f2b8b5;
+    --md-sys-color-error-container: #8c1d18;
+    --md-sys-color-on-error-container: #f9dedc;
+    --md-sys-color-warn-container: #574500;
+    --md-sys-color-on-warn-container: #ffe08b;
+    --md-sys-color-ok-container: #0f5132;
+    --md-sys-color-on-ok-container: #c4eed0;
+    --md-sys-color-surface: #141218;
+    --md-sys-color-surface-container-lowest: #0f0d13;
+    --md-sys-color-surface-container-low: #1d1b20;
+    --md-sys-color-surface-container: #211f26;
+    --md-sys-color-surface-container-high: #2b2930;
+    --md-sys-color-surface-container-highest: #36343b;
+    --md-sys-color-on-surface: #e6e0e9;
+    --md-sys-color-on-surface-variant: #cac4d0;
+    --md-sys-color-outline: #938f99;
+    --md-sys-color-outline-variant: #49454f;
+    color-scheme: dark;
+  }
+}
+
+/* ---------- Типографика MD3 ---------- */
+body { background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-family: var(--md-font); }
+h1 { font: 400 1.5rem/2rem var(--md-font); margin: 0; }                    /* headline-small */
+h2 { font: 500 1rem/1.5rem var(--md-font); letter-spacing: .01em; margin: 0 0 12px; } /* title-medium */
+h3 { font: 500 .875rem/1.25rem var(--md-font); letter-spacing: .01em; margin: 20px 0 8px; } /* title-small */
+.eyebrow { font: 500 .75rem/1rem var(--md-font); letter-spacing: .08em; color: var(--md-sys-color-primary); }
+header p { color: var(--md-sys-color-on-surface-variant); font-size: .875rem; }
+.hint, .attentionReason, .traceHeader small, .traceDetails { color: var(--md-sys-color-on-surface-variant); }
+td, th, .metric strong, .traceUsage, input[type=number] { font-variant-numeric: tabular-nums; }
+td:first-child, .traceDetails pre { font-family: var(--md-font-mono); font-size: .8rem; }
+
+/* ---------- Карточки ---------- */
+.panel {
+  background: var(--md-sys-color-surface-container-low);
+  border: 0;
+  border-radius: var(--md-shape-m);
+  box-shadow: none;
+  padding: 16px 20px;
+}
+.resultPanel { background: var(--md-sys-color-surface-container); border: 0; }
+.metric, .simpleSummary .metric {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-radius: var(--md-shape-m);
+}
+.metric span, .simpleSummary .metric span { color: var(--md-sys-color-on-primary-container); opacity: .8; }
+.simpleSummary .metric strong { color: var(--md-sys-color-on-primary-container); font: 400 2.25rem/2.75rem var(--md-font); } /* display-small */
+.simpleSummary .metric:nth-child(3) { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+.simpleSummary .metric:nth-child(3) strong, .simpleSummary .metric:nth-child(3) span { color: var(--md-sys-color-on-error-container); }
+.agentAnswer { color: var(--md-sys-color-on-surface); font-size: .9375rem; margin: 16px 0; }
+
+/* ---------- Кнопки ---------- */
+button {
+  position: relative;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border: 0;
+  border-radius: var(--md-shape-full);
+  min-height: 40px;
+  padding: 10px 24px;
+  font: 500 .875rem/1.25rem var(--md-font);
+  letter-spacing: .01em;
+  transition: box-shadow .15s, background-color .15s;
+}
+button:hover:not(:disabled) { box-shadow: var(--md-elevation-1); background: color-mix(in srgb, var(--md-sys-color-primary) 92%, var(--md-sys-color-on-primary)); }
+button:active:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-primary) 88%, var(--md-sys-color-on-primary)); }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible, .attentionCard:focus-visible, .orderRow:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary); outline-offset: 2px;
+}
+button:disabled { background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent); color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); opacity: 1; }
+button.secondary { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+button.secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-secondary-container) 92%, var(--md-sys-color-on-secondary-container)); }
+#modeToggle { background: transparent; color: var(--md-sys-color-primary); box-shadow: inset 0 0 0 1px var(--md-sys-color-outline); } /* outlined / segmented */
+#modeToggle[aria-pressed="true"] { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.primaryAction { width: 100%; min-height: 48px; font-size: 1rem; }
+.moreOrders { background: none; color: var(--md-sys-color-primary); padding: 8px 12px; min-height: 0; text-decoration: none; border-radius: var(--md-shape-full); }
+.moreOrders:hover:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); box-shadow: none; }
+
+/* ---------- Поля ввода (outlined text field) ---------- */
+label { font: 500 .75rem/1rem var(--md-font); color: var(--md-sys-color-on-surface-variant); letter-spacing: .03em; }
+select, input {
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: 4px;
+  min-height: 40px;
+  padding: 8px 12px;
+  font: 400 1rem/1.5rem var(--md-font);
+}
+select:hover, input:hover { border-color: var(--md-sys-color-on-surface); }
+select:focus, input:focus { border-color: var(--md-sys-color-primary); outline: 1px solid var(--md-sys-color-primary); }
+select option { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); }
+
+/* ---------- Чипы: плашки, срочность, проверки ---------- */
+.badge, .badge.source, .reviewBadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: var(--md-shape-s);
+  padding: 4px 12px; min-height: 32px;
+  font: 500 .8125rem/1.25rem var(--md-font);
+}
+.badge { background: var(--md-sys-color-warn-container); color: var(--md-sys-color-on-warn-container); }
+.badge.source { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant); }
+.reviewBadge { min-height: 24px; padding: 2px 8px; font-size: .75rem; background: var(--md-sys-color-warn-container); color: var(--md-sys-color-on-warn-container); }
+.urgency { display: inline-block; padding: 2px 10px; border-radius: var(--md-shape-s); font: 500 .75rem/1.25rem var(--md-font); }
+.urgency.high { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+.urgency.medium { background: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container); }
+.urgency.low { background: var(--md-sys-color-ok-container); color: var(--md-sys-color-on-ok-container); }
+.error { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); border-radius: var(--md-shape-s); }
+#working { color: var(--md-sys-color-primary); font-weight: 500; }
+
+/* ---------- Списки: «Требует внимания», проверка, лог ---------- */
+.attentionCard {
+  background: var(--md-sys-color-surface-container-lowest);
+  border: 0; border-left: 4px solid var(--md-sys-color-error);
+  border-radius: var(--md-shape-m);
+  padding: 12px 16px;
+}
+.attentionCard:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 6%, var(--md-sys-color-surface-container-lowest)); outline: none; }
+.attentionInfo h3 { margin: 0 0 4px; }
+.attentionInfo strong { color: var(--md-sys-color-error); font-weight: 500; }
+.reviewPanel { background: var(--md-sys-color-warn-container); color: var(--md-sys-color-on-warn-container); border: 0; border-radius: var(--md-shape-m); }
+.reviewPanel h3 { color: var(--md-sys-color-on-warn-container); margin-top: 0; }
+.reviewNote { color: var(--md-sys-color-on-surface-variant); }
+.tracePanel details > summary { color: var(--md-sys-color-on-surface); font: 500 1rem/1.5rem var(--md-font); }
+.traceItem { background: var(--md-sys-color-surface-container-lowest); border-left-color: var(--md-sys-color-outline-variant); }
+.traceItem.tool_call { background: var(--md-sys-color-surface-container-lowest); border-left-color: var(--md-sys-color-primary); }
+.traceItem.tool_result { background: var(--md-sys-color-surface-container); border-left-color: var(--md-sys-color-outline); }
+.traceItem.final { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-left-color: var(--md-sys-color-primary); }
+.traceText { color: inherit; font-size: .875rem; }
+.traceUsage { color: var(--md-sys-color-primary); }
+.traceDetails pre { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); }
+
+/* ---------- Таблицы ---------- */
+table { font-size: .8125rem; }
+th { background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); font: 500 .75rem/1rem var(--md-font); position: sticky; top: 0; z-index: 1; }
+th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 8px 10px; }
+.orderRow:hover, .orderRow:focus { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); }
+.tableWrap { margin-top: 12px; border-radius: var(--md-shape-s); }
+
+/* ---------- Разбор артикула — боковая панель (side sheet) ---------- */
+#skuPanel:not([hidden]) {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 10;
+  width: min(760px, 100%); margin: 0; overflow: auto;
+  border-radius: var(--md-shape-l) 0 0 var(--md-shape-l);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-elevation-3);
+}
+#skuPanel .tableHead { position: sticky; top: -16px; background: inherit; padding: 8px 0; z-index: 2; }
+
+/* ---------- Дашборд на один экран (десктоп, простой режим) ---------- */
+@media (min-width: 1024px) and (min-height: 640px) {
+  main:not(:has(#advancedOrders:not([hidden]))) {
+    height: 100vh; max-width: none; padding: 16px 24px; overflow: hidden;
+    display: grid; gap: 12px 16px; align-items: stretch;
+    grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr) minmax(300px, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "header header header"
+      "controls controls controls"
+      "error error error"
+      "result attention trace";
+  }
+  main:not(:has(#advancedOrders:not([hidden]))) > header { grid-area: header; margin: 0; }
+  main:not(:has(#advancedOrders:not([hidden]))) > header p:not(.eyebrow) { display: none; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .controls { grid-area: controls; margin: 0; padding: 12px 16px; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .error { grid-area: error; margin: 0; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel { grid-area: result; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel { grid-area: attention; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .tracePanel { grid-area: trace; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel,
+  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel,
+  main:not(:has(#advancedOrders:not([hidden]))) > .tracePanel { margin: 0; min-height: 0; overflow: auto; }
+  main:not(:has(#advancedOrders:not([hidden]))) > #advancedSummary { display: none; }
+  main:not(:has(#advancedOrders:not([hidden]))) .simpleSummary .metric strong { font-size: 1.75rem; line-height: 2.25rem; }
+  main:not(:has(#advancedOrders:not([hidden]))) .attentionReason { white-space: normal; }
+  /* кнопка «Утвердить» всегда видна внизу панели «Итог» */
+  main:not(:has(#advancedOrders:not([hidden]))) .resultPanel .primaryAction { position: sticky; bottom: 0; box-shadow: 0 -8px 12px var(--md-sys-color-surface-container); }
+  /* лог шагов в колонке всегда развёрнут по высоте панели */
+  main:not(:has(#advancedOrders:not([hidden]))) .tracePanel details > summary { position: sticky; top: -16px; background: inherit; padding: 4px 0 8px; z-index: 1; }
+}
+
+/* Расширенный режим на десктопе: обычный поток со скроллом, но в стиле MD3 */
+@media (min-width: 901px) {
+  main:has(#advancedOrders:not([hidden])) { max-width: 1600px; }
+}
+@media (max-width: 700px) {
+  main { padding: 12px; }
+  .panel { padding: 12px 14px; }
+  #skuPanel:not([hidden]) { border-radius: 0; }
+}
