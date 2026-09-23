@@ -9,3 +9,5 @@ JOURNAL.md
 заказчик/
 data/private/
 exports/
+.claude/
+exports/
