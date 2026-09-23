@@ -4,6 +4,7 @@ const OpenAI = require('openai');
 const fs = require('node:fs');
 const path = require('node:path');
 const core = require('./lib/core');
+const { review_order } = require('./lib/review');
 const { loadAll } = require('./lib/data');
 
 const app = express();
@@ -18,7 +19,8 @@ const toolDefinitions = [
   { name: 'list_skus', description: 'List manufacturer SKUs, risk flags and summary.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier'] } },
   { name: 'analyze_sku', description: 'Analyze one SKU: regular demand, outliers, seasonality, trend and stockout.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, sku: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier', 'sku'] } },
   { name: 'calc_order', description: 'Calculate one SKU order from demand, stock, inbound goods and MOQ.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, sku: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier', 'sku'] } },
-  { name: 'build_supplier_orders', description: 'Build final manufacturer order rows with urgency and rationale.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier'] } }
+  { name: 'build_supplier_orders', description: 'Build final manufacturer order rows with urgency and rationale.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier'] } },
+  { name: 'review_order', description: 'Проверить готовый заказ на аномалии и вернуть позиции, требующие внимания менеджера.', parameters: { type: 'object', properties: { supplier: { type: 'string' }, horizonDays: { type: 'integer', minimum: 1, maximum: 365 }, growthPct: { type: 'number', minimum: -99, maximum: 1000 } }, required: ['supplier'] } }
 ].map(definition => ({ type: 'function', function: definition }));
 const toolNames = new Set(toolDefinitions.map(item => item.function.name));
 function compact(value) {
@@ -33,6 +35,7 @@ function toolCallText(name, args, skuNames) {
   if (name === 'analyze_sku') return `Разбираю артикул ${args.sku}${skuNames.get(args.sku) ? ` — ${skuNames.get(args.sku).slice(0, 50)}` : ''}.`;
   if (name === 'calc_order') return `Рассчитываю заказ для артикула ${args.sku}.`;
   if (name === 'build_supplier_orders') return `Собираю итоговый заказ по производителю ${args.supplier}.`;
+  if (name === 'review_order') return `Проверяю готовый заказ по производителю ${args.supplier} на аномалии.`;
   return `Вызываю инструмент ${name}.`;
 }
 function toolResultText(name, result, args) {
@@ -66,6 +69,10 @@ function toolResultText(name, result, args) {
     const urgent = orders.filter(row => row.urgency === 'high').length;
     return `Готово: ${fmt(result.count ?? orders.length)} позиций, ${fmt(result.totalUnits ?? orders.reduce((sum, row) => sum + row.quantity, 0))} единиц, из них срочных ${fmt(urgent)}.`;
   }
+  if (name === 'review_order') {
+    const warnings = (result.issues || []).filter(issue => issue.severity === 'warn').length;
+    return `Проверено ${fmt(result.checked)} позиций: найдено ${fmt(result.issues?.length)} замечаний, из них ${fmt(warnings)} требуют проверки менеджера.`;
+  }
   return 'Инструмент вернул результат.';
 }
 function forModel(name, result) {
@@ -81,13 +88,17 @@ function forModel(name, result) {
     return { supplier: result.supplier, count: result.count, totalUnits: result.totalUnits,
       sampleOrders: result.orders.slice(0, 6).map(({ sku, quantity, urgency, rationale }) => ({ sku, quantity, urgency, rationale })) };
   }
+  if (name === 'review_order' && !result.error) {
+    return { checked: result.checked, issueCount: result.issues.length,
+      issues: result.issues.slice(0, 5).map(({ sku, rule, severity, message, quantity }) => ({ sku, rule, severity, message, quantity })) };
+  }
   return result;
 }
 function callTool(name, args, trace, skuNames) {
   trace.push({ step: trace.length + 1, type: 'tool_call', name, args, text: toolCallText(name, args, skuNames) });
   try {
     if (!toolNames.has(name)) throw new Error('Неизвестный инструмент');
-    const result = core[name](args);
+    const result = name === 'review_order' ? review_order(args) : core[name](args);
     if (name === 'list_skus') for (const row of result.skus || []) skuNames.set(row.sku, row.name);
     trace.push({ step: trace.length + 1, type: 'tool_result', name, summary: summarize(result), text: toolResultText(name, result, args) });
     return result;
@@ -100,6 +111,11 @@ function validPlan(input) {
   return input && typeof input.supplier === 'string' && core.listSuppliers().some(item => item.id === input.supplier) &&
     (input.horizonDays === undefined || Number.isInteger(input.horizonDays) && input.horizonDays >= 1 && input.horizonDays <= 365) &&
     (input.growthPct === undefined || typeof input.growthPct === 'number' && Number.isFinite(input.growthPct) && input.growthPct >= -99 && input.growthPct <= 1000);
+}
+function withReviewBlock(answer, review) {
+  const intro = String(answer || '').split(/(?:\*\*)?Проверьте перед утверждением(?:\*\*)?\s*:?/i)[0].trim();
+  const points = review.issues.slice(0, 5).map(issue => `- ${issue.name}: ${issue.message}`);
+  return `${intro}\n\nПроверьте перед утверждением:\n${points.length ? points.join('\n') : 'Замечаний не найдено.'}`;
 }
 app.get('/api/suppliers', (_req, res) => {
   const data = loadAll();
@@ -125,16 +141,18 @@ app.post('/api/plan', async (req, res) => {
     let orders;
     let answer;
     let summary;
+    let review;
     if (demoMode) {
       const listed = callTool('list_skus', { supplier, horizonDays, growthPct }, trace, skuNames);
       summary = listed.summary;
       const risky = listed.skus.filter(item => item.flags?.length).slice(0, 3);
       for (const item of risky) callTool('analyze_sku', { supplier, sku: item.sku, horizonDays, growthPct }, trace, skuNames);
       orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace, skuNames).orders;
+      review = callTool('review_order', { supplier, horizonDays, growthPct }, trace, skuNames);
       answer = `[DEMO] Сформирован проект заказа для производителя ${supplier}. Расчёты выполнены локальным ядром; текст ответа задан заранее. Проверьте и измените количества перед утверждением.`;
     } else {
       const messages = [
-        { role: 'system', content: 'Ты — агент по закупкам дистрибьютора электротоваров, готовишь проект заказа производителю для менеджера. Порядок работы: 1) list_skus — сводка и рисковые позиции; 2) analyze_sku только для 3–5 самых важных позиций (срочные и с флагами one_off_excluded, stockout_history, seasonal, growth), не для всех; 3) build_supplier_orders. Все цифры бери только из результатов инструментов, ничего не выдумывай и не пересчитывай сам. Ответ по-русски, до 200 слов: итог (сколько позиций и единиц к заказу, сколько срочных); 3–5 ключевых позиций с причиной — например, разовая продажа исключена (каким был бы заказ без фильтра по experiments), восстановлен упущенный спрос, сезон или тренд; что менеджеру проверить перед утверждением. Не утверждай и не отправляй заказ — это делает только менеджер.' },
+        { role: 'system', content: 'Ты — агент по закупкам дистрибьютора электротоваров. Порядок работы обязателен: 1) list_skus; 2) analyze_sku для 3–5 важных позиций параллельными tool_calls в одном ходе; 3) build_supplier_orders; 4) ПОСЛЕ сборки обязательно review_order; 5) финальный ответ. Уложись в 5 ходов, лимит 6. Все цифры бери только из инструментов. Ответ по-русски, до 200 слов: итог заказа, несколько ключевых позиций с причиной и отдельный блок «Проверьте перед утверждением» с найденными review_order проблемами (до 5). Не утверждай и не отправляй заказ — это делает менеджер.' },
         { role: 'user', content: `Сформируй проект заказа для производителя ${supplier} на ${horizonDays} дней с прогнозом прироста ${growthPct}%.` }
       ];
       for (let i = 0; i < 6; i++) {
@@ -145,6 +163,12 @@ app.post('/api/plan', async (req, res) => {
         if (!message) throw new Error('Модель вернула пустой ответ');
         messages.push(message);
         if (!message.tool_calls?.length) {
+          if (!review) {
+            if (!orders) orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace, skuNames).orders;
+            review = callTool('review_order', { supplier, horizonDays, growthPct }, trace, skuNames);
+            messages.push({ role: 'system', content: `Проверка готова. Перед финальным ответом используй эти замечания: ${compact(forModel('review_order', review))}` });
+            continue;
+          }
           answer = message.content || 'Проект заказа рассчитан.';
           trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: summarize(answer), text: answer.slice(0, 200), usage });
           break;
@@ -155,23 +179,29 @@ app.post('/api/plan', async (req, res) => {
           const args = { supplier, horizonDays, growthPct };
           if (typeof requested.sku === 'string') args.sku = requested.sku;
           let result;
-          try { result = callTool(call.function.name, args, trace, skuNames); }
+          try {
+            if (call.function.name === 'review_order' && !orders) orders = callTool('build_supplier_orders', args, trace, skuNames).orders;
+            result = callTool(call.function.name, args, trace, skuNames);
+          }
           catch (error) { result = { error: error.message }; }
           if (call.function.name === 'list_skus' && result.summary) summary = result.summary;
           if (call.function.name === 'build_supplier_orders' && Array.isArray(result.orders)) orders = result.orders;
+          if (call.function.name === 'review_order' && Array.isArray(result.issues)) review = result;
           if (call === message.tool_calls[0]) trace[trace.length - 1].usage = usage; // расход одного хода модели — один раз
           messages.push({ role: 'tool', tool_call_id: call.id, content: compact(forModel(call.function.name, result)) });
         }
       }
       if (!orders) orders = callTool('build_supplier_orders', { supplier, horizonDays, growthPct }, trace, skuNames).orders;
       if (!summary) summary = callTool('list_skus', { supplier, horizonDays, growthPct }, trace, skuNames).summary;
+      if (!review) review = callTool('review_order', { supplier, horizonDays, growthPct }, trace, skuNames);
       if (!answer) {
         answer = 'Достигнут лимит шагов агента. Проект заказа рассчитан локальным ядром; проверьте строки.';
         trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer, text: answer.slice(0, 200) });
       }
     }
+    answer = withReviewBlock(answer, review);
     if (demoMode) trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer, text: answer.slice(0, 200) });
-    return res.json({ demoMode, answer, orders, summary, trace });
+    return res.json({ demoMode, answer, orders, summary, review, trace });
   } catch (error) {
     console.error('[PLAN ERROR]', error.message);
     return res.status(502).json({ error: 'Не удалось получить ответ модели. Проверьте настройки API и повторите запрос.' });

@@ -5,6 +5,7 @@ let plannedHorizon = 30;
 let plannedGrowth = 0;
 let advancedMode = false;
 let currentSummary = null;
+let currentReview = null;
 const urgencyText = { high: 'Высокая', medium: 'Средняя', low: 'Низкая' };
 const flagLabels = {
   stockout_now: ['⛔', 'Нет в наличии сейчас'],
@@ -43,7 +44,7 @@ function setMode(advanced) {
   try { localStorage.setItem('purchasePlanMode', advanced ? 'advanced' : 'simple'); } catch { /* хранение режима необязательно */ }
 }
 function renderAnswer(answer) {
-  const plain = String(answer || '').replace(/^\[DEMO\]\s*/, '')
+  const plain = String(answer || '').split(/Проверьте перед утверждением\s*:/i)[0].replace(/^\[DEMO\]\s*/, '')
     .replace(/^[ \t]*(?:[-•*]|\d+[.)])\s+/gm, '').replace(/^[ \t]*#{1,6}\s+/gm, '').trim();
   const short = plain.split(/(?<=[.!?])\s+|\n+/).map(part => part.trim()).filter(Boolean).slice(0, 4).join(' ').replace(/\s+/g, ' ');
   const parts = short.split(/\*\*([^*]+)\*\*/g);
@@ -81,6 +82,21 @@ function attentionReason(flags = []) {
   ].filter(([flag]) => flags.includes(flag)).map(([, text]) => text);
   return reasons.length ? reasons.join(' · ') : 'высокий риск дефицита';
 }
+function issuesFor(sku) { return (currentReview?.issues || []).filter(issue => issue.sku === sku); }
+function reviewBadge(issues) {
+  const badge = document.createElement('span'); badge.className = 'reviewBadge';
+  badge.textContent = '⚠️ Проверить'; badge.title = issues.map(issue => issue.message).join('\n');
+  badge.setAttribute('aria-label', badge.title); return badge;
+}
+function renderReview(review) {
+  const issues = review?.issues || [];
+  $('reviewPanel').hidden = false;
+  $('reviewIssues').replaceChildren(...(issues.length ? issues.slice(0, 5).map(issue => {
+    const li = document.createElement('li');
+    const name = document.createElement('strong'); name.textContent = issue.name;
+    li.append(name, document.createTextNode(` — ${issue.message}`)); return li;
+  }) : [Object.assign(document.createElement('li'), { textContent: 'Замечаний не найдено.' })]));
+}
 function renderAttention() {
   const urgent = currentOrders.map((order, index) => ({ order, index })).filter(({ order }) => order.urgency === 'high');
   const cards = urgent.slice(0, 10).map(({ order, index }) => {
@@ -91,6 +107,11 @@ function renderAttention() {
     const amount = document.createElement('strong'); amount.textContent = `Заказать ${order.quantity} шт`;
     const reason = document.createElement('p'); reason.className = 'attentionReason'; reason.textContent = attentionReason(order.flags);
     info.append(name, amount, reason);
+    const issues = issuesFor(order.sku);
+    if (issues.length) {
+      const note = document.createElement('p'); note.className = 'reviewNote'; note.textContent = issues[0].message;
+      info.append(reviewBadge(issues), note);
+    }
     const label = document.createElement('label'); label.textContent = 'Количество, шт';
     const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.max = '1000000'; input.step = '1';
     input.value = order.quantity; input.dataset.orderIndex = index;
@@ -184,6 +205,8 @@ function renderOrders() {
       badge.title = flagLabels[flag]?.[1] || flag;
       badge.setAttribute('aria-label', badge.title); flags.append(badge);
     }
+    const issues = issuesFor(order.sku);
+    if (issues.length) flags.append(reviewBadge(issues));
     tr.append(flags, cell(order.rationale));
     tr.addEventListener('click', () => loadSku(order.sku));
     tr.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadSku(order.sku); } });
@@ -240,7 +263,7 @@ $('modeToggle').addEventListener('click', () => setMode(!advancedMode));
 $('moreOrders').addEventListener('click', () => setMode(true));
 $('plan').addEventListener('click', async () => {
   showError(''); $('working').hidden = false; $('plan').disabled = true; $('approve').disabled = true; $('approveSimple').disabled = true; $('skuPanel').hidden = true;
-  currentOrders = []; currentSummary = null; plannedSupplier = null;
+  currentOrders = []; currentSummary = null; currentReview = null; plannedSupplier = null; $('reviewPanel').hidden = true;
   try {
     const supplier = $('supplier').value;
     const horizonDays = Number($('horizon').value);
@@ -251,6 +274,7 @@ $('plan').addEventListener('click', async () => {
     $('demoBadge').hidden = !data.demoMode;
     renderAnswer(data.answer);
     currentSummary = data.summary; renderTrace(data.trace);
+    currentReview = data.review; renderReview(currentReview);
     currentOrders = data.orders; plannedSupplier = supplier; plannedHorizon = horizonDays; plannedGrowth = growthPct;
     renderOrders(); renderAttention();
   } catch (error) { showError(error.message); }
