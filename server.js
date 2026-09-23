@@ -81,7 +81,7 @@ app.post('/api/plan', async (req, res) => {
       answer = `[DEMO] Сформирован проект заказа для производителя ${supplier}. Расчёты выполнены локальным ядром; текст ответа задан заранее. Проверьте и измените количества перед утверждением.`;
     } else {
       const messages = [
-        { role: 'system', content: 'Ты помощник менеджера закупок. Вызывай инструменты для анализа и формирования заказа. Используй только агрегаты по артикулам. Сначала list_skus, затем анализ рисковых SKU, затем build_supplier_orders. Кратко объясни результат по-русски. Не утверждай и не отправляй заказ.' },
+        { role: 'system', content: 'Ты — агент по закупкам дистрибьютора электротоваров, готовишь проект заказа производителю для менеджера. Порядок работы: 1) list_skus — сводка и рисковые позиции; 2) analyze_sku только для 3–5 самых важных позиций (срочные и с флагами one_off_excluded, stockout_history, seasonal, growth), не для всех; 3) build_supplier_orders. Все цифры бери только из результатов инструментов, ничего не выдумывай и не пересчитывай сам. Ответ по-русски, до 200 слов: итог (сколько позиций и единиц к заказу, сколько срочных); 3–5 ключевых позиций с причиной — например, разовая продажа исключена (каким был бы заказ без фильтра по experiments), восстановлен упущенный спрос, сезон или тренд; что менеджеру проверить перед утверждением. Не утверждай и не отправляй заказ — это делает только менеджер.' },
         { role: 'user', content: `Сформируй проект заказа для производителя ${supplier} на ${horizonDays} дней с прогнозом прироста ${growthPct}%.` }
       ];
       for (let i = 0; i < 6; i++) {
@@ -106,7 +106,7 @@ app.post('/api/plan', async (req, res) => {
           catch (error) { result = { error: error.message }; }
           if (call.function.name === 'list_skus' && result.summary) summary = result.summary;
           if (call.function.name === 'build_supplier_orders' && Array.isArray(result.orders)) orders = result.orders;
-          trace[trace.length - 1].usage = usage;
+          if (call === message.tool_calls[0]) trace[trace.length - 1].usage = usage; // расход одного хода модели — один раз
           messages.push({ role: 'tool', tool_call_id: call.id, content: compact(forModel(call.function.name, result)) });
         }
       }
