@@ -3,6 +3,7 @@ let currentOrders = [];
 let plannedSupplier = null;
 let plannedHorizon = 30;
 let plannedGrowth = 0;
+let plannedAsOf = null;
 let advancedMode = false;
 let currentSummary = null;
 let currentReview = null;
@@ -226,9 +227,17 @@ function renderSkuChart(data) {
   const fig = $('skuChart');
   if (!history.length) { fig.replaceChildren(); return; }
   // прогноз по месяцам приходит за неполные месяцы периода — приводим к месячному темпу
-  const days = (data.details.leadTimeDays || 0) + (data.details.horizonDays || 0);
-  const perMonth = days ? data.forecast / days * 30.4 : 0;
-  const points = [...history.map(h => ({ m: h.month, raw: h.raw, clean: h.restored })), ...forecast.slice(0, 3).map(([m]) => ({ m, fc: perMonth }))];
+  // forecastByMonth — прогноз только за покрытые дни месяца; приводим к темпу полного месяца
+  const periodDays = (data.details.leadTimeDays || 0) + (data.details.horizonDays || 0);
+  const start = plannedAsOf ? new Date(plannedAsOf) : null;
+  const coveredShare = m => {
+    if (!start) return 1;
+    const [y, mo] = m.split('-').map(Number), first = new Date(y, mo - 1, 1), last = new Date(y, mo, 0);
+    const from = new Date(Math.max(first, new Date(start.getTime() + 864e5))), to = new Date(Math.min(last, new Date(start.getTime() + periodDays * 864e5)));
+    return Math.max(0, Math.round((to - from) / 864e5) + 1) / last.getDate();
+  };
+  const points = [...history.map(h => ({ m: h.month, raw: h.raw, clean: h.restored })),
+    ...forecast.map(([m, v]) => ({ m, fc: v, share: coveredShare(m) })).filter(p => p.share >= 0.25).slice(0, 3).map(p => ({ m: p.m, fc: p.fc / p.share }))];
   const max = Math.max(1, ...points.map(p => Math.max(p.raw || 0, p.clean || 0, p.fc || 0)));
   const W = 640, H = 180, L = 36, B = 22, T = 10, step = (W - L - 8) / points.length, y = v => T + (H - T - B) * (1 - v / max);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -322,7 +331,7 @@ $('plan').addEventListener('click', async () => {
     renderAnswer(data.answer);
     currentSummary = data.summary; renderTrace(data.trace);
     currentReview = data.review; renderReview(currentReview);
-    currentOrders = data.orders; plannedSupplier = supplier; plannedHorizon = horizonDays; plannedGrowth = growthPct;
+    currentOrders = data.orders; plannedAsOf = data.asOf || null; plannedSupplier = supplier; plannedHorizon = horizonDays; plannedGrowth = growthPct;
     renderOrders(); renderAttention();
   } catch (error) { showError(error.message); }
   finally { stopProgress(); $('plan').disabled = false; }
@@ -335,7 +344,7 @@ async function approveOrder(format = 'csv') {
   const units = orders.reduce((total, order) => total + order.quantity, 0);
   if (!window.confirm(`Выгрузить заказ на ${orders.length} позиций / ${units} единиц?`)) return;
   try {
-    const response = await fetch(format === 'xlsx' ? '/api/approve/xlsx' : '/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: plannedSupplier, orders: orders.map(({ details, ...row }) => row), horizonDays: plannedHorizon, growthPct: plannedGrowth }) });
+    const response = await fetch(format === 'xlsx' ? '/api/approve/xlsx' : '/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: plannedSupplier, orders: orders.map(({ details, ...row }) => row), horizonDays: plannedHorizon, growthPct: plannedGrowth, asOf: plannedAsOf }) });
     if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Ошибка выгрузки'); }
     const blob = await response.blob(); const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `order-${Date.now()}.${format}`; a.click(); URL.revokeObjectURL(url);

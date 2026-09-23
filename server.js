@@ -85,6 +85,12 @@ function forModel(name, result) {
         excludedOneOffCount: details.oneOffs.length, restoredStockoutMonths: details.lostDemand.length },
       experiments };
   }
+  if (name === 'calc_order' && !result.error) {
+    const { sku, name: skuName, forecast, safetyStock, quantity, urgency, flags, rationale, details = {} } = result;
+    return { sku, name: skuName, forecast, safetyStock, quantity, urgency, flags, rationale,
+      details: { levelPerMonth: details.levelPerMonth, trendMonthlyPct: details.trendMonthlyPct, seasonSource: details.seasonSource,
+        forecastByMonth: details.forecastByMonth, excludedOneOffCount: (details.oneOffs || []).length, restoredStockoutMonths: (details.lostDemand || []).length } };
+  }
   if (name === 'build_supplier_orders' && !result.error) {
     return { supplier: result.supplier, count: result.count, totalUnits: result.totalUnits,
       sampleOrders: result.orders.slice(0, 6).map(({ sku, quantity, urgency, rationale }) => ({ sku, quantity, urgency, rationale })) };
@@ -202,7 +208,7 @@ app.post('/api/plan', async (req, res) => {
     }
     answer = withReviewBlock(answer, review);
     if (demoMode) trace.push({ step: trace.length + 1, type: 'final', name: 'assistant', summary: answer, text: answer.slice(0, 200) });
-    return res.json({ demoMode, answer, orders, summary, review, trace });
+    return res.json({ demoMode, answer, orders, summary, review, trace, asOf: loadAll().asOf });
   } catch (error) {
     console.error('[PLAN ERROR]', error.message);
     return res.status(502).json({ error: 'Не удалось получить ответ модели. Проверьте настройки API и повторите запрос.' });
@@ -214,8 +220,14 @@ function csvCell(value) {
 }
 function validApproval(body) {
   const { supplier, orders } = body || {};
-  return typeof supplier === 'string' && core.listSuppliers().some(item => item.id === supplier) && Array.isArray(orders) && orders.length > 0 && orders.length <= 1000 &&
-    orders.every(row => row && typeof row.sku === 'string' && Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000);
+  if (typeof supplier !== 'string' || !core.listSuppliers().some(item => item.id === supplier)) return false;
+  const known = loadAll().manufacturers[supplier]?.sales || {}; // только артикулы этого производителя
+  const text = v => v === undefined || v === null || (typeof v === 'string' && v.length <= 2000);
+  return Array.isArray(orders) && orders.length > 0 && orders.length <= 1000 &&
+    orders.every(row => row && typeof row.sku === 'string' && Object.hasOwn(known, row.sku) &&
+      Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000 &&
+      text(row.name) && text(row.rationale) && text(row.urgency) &&
+      (row.flags === undefined || (Array.isArray(row.flags) && row.flags.every(f => typeof f === 'string'))));
 }
 app.post('/api/approve', (req, res) => {
   const { supplier, orders } = req.body || {};
@@ -246,5 +258,10 @@ app.post('/api/approve/xlsx', (req, res) => {
     console.error('[XLSX EXPORT ERROR]', error.message);
     return res.status(500).json({ error: 'Не удалось выгрузить XLSX.' });
   }
+});
+app.use((error, _req, res, _next) => {
+  const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 500 ? error.status : 500;
+  if (status === 500) console.error('[ERROR]', error.message);
+  res.status(status).json({ error: status === 413 ? 'Слишком большой запрос.' : status === 500 ? 'Внутренняя ошибка сервера.' : 'Некорректный запрос.' });
 });
 app.listen(port, () => console.log(demoMode ? '[DEMO MODE] OPENAI_API_KEY не задан' : `[LIVE] модель ${model}`));
