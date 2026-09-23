@@ -274,4 +274,9 @@ $('approve').addEventListener('click', approveOrder);
 $('approveSimple').addEventListener('click', approveOrder);
 try { advancedMode = localStorage.getItem('purchasePlanMode') === 'advanced'; } catch { advancedMode = false; }
 setMode(advancedMode);
-loadSuppliers();
+if (location.protocol === 'file:') {
+  $('plan').disabled = true;
+  showError('Для расчёта запустите приложение по README: npm start, затем откройте адрес сервера в браузере.');
+} else {
+  loadSuppliers();
+}
