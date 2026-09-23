@@ -37,10 +37,7 @@ function setMode(advanced) {
   advancedMode = advanced;
   $('advancedSummary').hidden = !advanced;
   $('advancedOrders').hidden = !advanced;
-  $('modeToggle').textContent = advanced ? 'Простой режим' : 'Расширенный режим';
-  $('modeToggle').setAttribute('aria-pressed', String(advanced));
-  $('traceDetails').open = advanced || matchMedia('(min-width: 1024px)').matches; // на дашборде лог — отдельная колонка
-  $('traceTitle').textContent = advanced ? 'Лог шагов агента' : `Как агент пришёл к результату (${$('trace').children.length === 1 && !plannedSupplier ? 0 : $('trace').children.length} шагов)`;
+  $('modeToggle').checked = advanced;
   try { localStorage.setItem('purchasePlanMode', advanced ? 'advanced' : 'simple'); } catch { /* хранение режима необязательно */ }
 }
 function renderAnswer(answer) {
@@ -67,6 +64,7 @@ function refreshSimpleSummary() {
   const valid = currentOrders.length > 0 && currentOrders.every(order => Number.isInteger(order.quantity) && order.quantity >= 0 && order.quantity <= 1000000) && totals.positions > 0;
   $('approve').disabled = !valid;
   $('approveSimple').disabled = !valid;
+  $('approveXlsx').disabled = !valid;
   if (currentSummary) renderSummary({ ...currentSummary, toOrder: totals.positions, urgent: totals.urgent });
 }
 function setQuantity(index, value) {
@@ -130,6 +128,7 @@ function renderAttention() {
   $('moreOrders').hidden = other === 0;
 }
 async function loadSuppliers() {
+  startProgress('Читаю выгрузки 1С…', 'первый запуск до 10 с'); $('plan').disabled = true;
   try {
     const response = await fetch('/api/suppliers');
     if (!response.ok) throw new Error('Не удалось загрузить производителей');
@@ -140,6 +139,7 @@ async function loadSuppliers() {
     $('sourceBadge').textContent = data.dataSource === 'demo' ? 'ИСТОЧНИК: ДЕМО-ДАННЫЕ' : 'ИСТОЧНИК: ЛОКАЛЬНЫЕ ДАННЫЕ';
     $('sourceBadge').hidden = false;
   } catch (error) { showError(error.message); }
+  finally { stopProgress(); $('plan').disabled = false; }
 }
 function renderSummary(summary) {
   const labels = [
@@ -176,7 +176,9 @@ function renderTrace(trace) {
     }
     return li;
   }));
-  $('traceTitle').textContent = advancedMode ? 'Лог шагов агента' : `Как агент пришёл к результату (${trace.length} шагов)`;
+  $('traceTitle').textContent = `Как агент пришёл к результату (${trace.length} шагов)`;
+  $('openTrace').textContent = `Как агент пришёл к результату (${trace.length} шагов)`;
+  $('openTrace').disabled = !trace.length;
 }
 function renderOrders() {
   $('orders').replaceChildren(...currentOrders.map((order, index) => {
@@ -259,10 +261,23 @@ async function loadSku(sku) {
   } catch (error) { $('skuStatus').textContent = error.message; }
 }
 $('closeSku').addEventListener('click', () => { $('skuPanel').hidden = true; });
-$('modeToggle').addEventListener('click', () => setMode(!advancedMode));
+$('modeToggle').addEventListener('change', () => setMode($('modeToggle').checked));
+$('openTrace').addEventListener('click', () => $('traceDialog').showModal());
+$('closeTrace').addEventListener('click', () => $('traceDialog').close());
+$('traceDialog').addEventListener('click', event => { if (event.target === $('traceDialog')) $('traceDialog').close(); }); // клик по фону
+
+// Индикатор прогресса: полоса + секундомер, чтобы было видно, что процесс идёт, а не завис
+let progressTimer = null;
+function startProgress(text, hint) {
+  const started = Date.now();
+  $('progressText').textContent = text; $('progress').hidden = false;
+  const tick = () => { $('progressTime').textContent = `прошло ${Math.round((Date.now() - started) / 1000)} с${hint ? ` · ${hint}` : ''}`; };
+  tick(); clearInterval(progressTimer); progressTimer = setInterval(tick, 1000);
+}
+function stopProgress() { clearInterval(progressTimer); progressTimer = null; $('progress').hidden = true; }
 $('moreOrders').addEventListener('click', () => setMode(true));
 $('plan').addEventListener('click', async () => {
-  showError(''); $('working').hidden = false; $('plan').disabled = true; $('approve').disabled = true; $('approveSimple').disabled = true; $('skuPanel').hidden = true;
+  showError(''); startProgress('Агент анализирует данные и формирует заказ…', 'обычно 15–30 с'); $('plan').disabled = true; $('approve').disabled = true; $('approveSimple').disabled = true; $('approveXlsx').disabled = true; $('openTrace').disabled = true; $('skuPanel').hidden = true;
   currentOrders = []; currentSummary = null; currentReview = null; plannedSupplier = null; $('reviewPanel').hidden = true;
   try {
     const supplier = $('supplier').value;
@@ -278,9 +293,9 @@ $('plan').addEventListener('click', async () => {
     currentOrders = data.orders; plannedSupplier = supplier; plannedHorizon = horizonDays; plannedGrowth = growthPct;
     renderOrders(); renderAttention();
   } catch (error) { showError(error.message); }
-  finally { $('working').hidden = true; $('plan').disabled = false; }
+  finally { stopProgress(); $('plan').disabled = false; }
 });
-async function approveOrder() {
+async function approveOrder(format = 'csv') {
   showError('');
   if (!plannedSupplier || !currentOrders.every(order => Number.isInteger(order.quantity) && order.quantity >= 0 && order.quantity <= 1000000)) return showError('Проверьте количества в заказе.');
   const orders = currentOrders.filter(order => order.quantity > 0);
@@ -288,14 +303,15 @@ async function approveOrder() {
   const units = orders.reduce((total, order) => total + order.quantity, 0);
   if (!window.confirm(`Выгрузить заказ на ${orders.length} позиций / ${units} единиц?`)) return;
   try {
-    const response = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: plannedSupplier, orders }) });
+    const response = await fetch(format === 'xlsx' ? '/api/approve/xlsx' : '/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ supplier: plannedSupplier, orders: orders.map(({ details, ...row }) => row), horizonDays: plannedHorizon, growthPct: plannedGrowth }) });
     if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Ошибка выгрузки'); }
     const blob = await response.blob(); const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `order-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = `order-${Date.now()}.${format}`; a.click(); URL.revokeObjectURL(url);
   } catch (error) { showError(error.message); }
 }
-$('approve').addEventListener('click', approveOrder);
-$('approveSimple').addEventListener('click', approveOrder);
+$('approve').addEventListener('click', () => approveOrder('csv'));
+$('approveSimple').addEventListener('click', () => approveOrder('csv'));
+$('approveXlsx').addEventListener('click', () => approveOrder('xlsx'));
 try { advancedMode = localStorage.getItem('purchasePlanMode') === 'advanced'; } catch { advancedMode = false; }
 setMode(advancedMode);
 if (location.protocol === 'file:') {

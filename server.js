@@ -13,7 +13,7 @@ const port = Number(process.env.PORT) || 3000;
 const demoMode = !process.env.OPENAI_API_KEY;
 const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const client = demoMode ? null : new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL || undefined, maxRetries: 0 });
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '2mb' })); // заказ IEK ~800 строк с обоснованиями
 app.use(express.static('public'));
 
 const toolDefinitions = [

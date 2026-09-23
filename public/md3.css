@@ -1,6 +1,6 @@
 /* Material Design 3 тема + дашборд на один экран.
    Подключается ПОСЛЕ style.css и переопределяет его: базовые стили не трогаем.
-   Токены — baseline-схема MD3 (primary #6750A4), тёмная тема по тумблеру ([data-theme=dark]). */
+   Токены — baseline-схема MD3 (primary #6750A4), только светлая тема. */
 :root {
   --md-sys-color-primary: #6750a4;
   --md-sys-color-on-primary: #ffffff;
@@ -40,36 +40,6 @@
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-surface);
 }
-/* Тёмная тема — только по тумблеру (public/theme.js), по умолчанию светлая */
-:root[data-theme="dark"] {
-    --md-sys-color-primary: #d0bcff;
-    --md-sys-color-on-primary: #381e72;
-    --md-sys-color-primary-container: #4f378b;
-    --md-sys-color-on-primary-container: #eaddff;
-    --md-sys-color-secondary-container: #4a4458;
-    --md-sys-color-on-secondary-container: #e8def8;
-    --md-sys-color-tertiary-container: #633b48;
-    --md-sys-color-on-tertiary-container: #ffd8e4;
-    --md-sys-color-error: #f2b8b5;
-    --md-sys-color-error-container: #8c1d18;
-    --md-sys-color-on-error-container: #f9dedc;
-    --md-sys-color-warn-container: #574500;
-    --md-sys-color-on-warn-container: #ffe08b;
-    --md-sys-color-ok-container: #0f5132;
-    --md-sys-color-on-ok-container: #c4eed0;
-    --md-sys-color-surface: #141218;
-    --md-sys-color-surface-container-lowest: #0f0d13;
-    --md-sys-color-surface-container-low: #1d1b20;
-    --md-sys-color-surface-container: #211f26;
-    --md-sys-color-surface-container-high: #2b2930;
-    --md-sys-color-surface-container-highest: #36343b;
-    --md-sys-color-on-surface: #e6e0e9;
-    --md-sys-color-on-surface-variant: #cac4d0;
-    --md-sys-color-outline: #938f99;
-    --md-sys-color-outline-variant: #49454f;
-    color-scheme: dark;
-  }
-
 /* ---------- Типографика MD3 ---------- */
 body { background: var(--md-sys-color-surface); color: var(--md-sys-color-on-surface); font-family: var(--md-font); }
 h1 { font: 400 1.5rem/2rem var(--md-font); margin: 0; }                    /* headline-small */
@@ -204,13 +174,14 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
   main:not(:has(#advancedOrders:not([hidden]))) {
     height: 100vh; max-width: none; padding: 16px 24px; overflow: hidden;
     display: grid; gap: 12px 16px; align-items: stretch;
-    grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr) minmax(300px, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.4fr);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
     grid-template-areas:
-      "header header header"
-      "controls controls controls"
-      "error error error"
-      "result attention trace";
+      "header header"
+      "controls controls"
+      "progress progress"
+      "error error"
+      "result attention";
   }
   main:not(:has(#advancedOrders:not([hidden]))) > header { grid-area: header; margin: 0; }
   main:not(:has(#advancedOrders:not([hidden]))) > header p:not(.eyebrow) { display: none; }
@@ -218,17 +189,14 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
   main:not(:has(#advancedOrders:not([hidden]))) > .error { grid-area: error; margin: 0; }
   main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel { grid-area: result; }
   main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel { grid-area: attention; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .tracePanel { grid-area: trace; }
   main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel,
-  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel,
-  main:not(:has(#advancedOrders:not([hidden]))) > .tracePanel { margin: 0; min-height: 0; overflow: auto; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel { margin: 0; min-height: 0; overflow: auto; }
+  main:not(:has(#advancedOrders:not([hidden]))) > .progress { grid-area: progress; margin: 0; }
   main:not(:has(#advancedOrders:not([hidden]))) > #advancedSummary { display: none; }
   main:not(:has(#advancedOrders:not([hidden]))) .simpleSummary .metric strong { font-size: 1.75rem; line-height: 2.25rem; }
   main:not(:has(#advancedOrders:not([hidden]))) .attentionReason { white-space: normal; }
   /* кнопка «Утвердить» всегда видна внизу панели «Итог» */
-  main:not(:has(#advancedOrders:not([hidden]))) .resultPanel .primaryAction { position: sticky; bottom: 0; box-shadow: 0 -8px 12px var(--md-sys-color-surface-container); }
-  /* лог шагов в колонке всегда развёрнут по высоте панели */
-  main:not(:has(#advancedOrders:not([hidden]))) .tracePanel details > summary { position: sticky; top: -16px; background: inherit; padding: 4px 0 8px; z-index: 1; }
+  main:not(:has(#advancedOrders:not([hidden]))) .resultPanel .resultActions { position: sticky; bottom: -16px; padding: 8px 0 16px; background: var(--md-sys-color-surface-container); }
 }
 
 /* Расширенный режим на десктопе: обычный поток со скроллом, но в стиле MD3 */
@@ -242,16 +210,34 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
   #skuPanel:not([hidden]) { border-radius: 0; }
 }
 
-/* ---------- Тумблер темы (MD3 switch, компактный) ---------- */
-.themeSwitch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font: 500 .75rem/1rem var(--md-font); color: var(--md-sys-color-on-surface-variant); user-select: none; }
-.themeSwitch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.themeTrack { position: relative; width: 36px; height: 20px; border-radius: var(--md-shape-full); background: var(--md-sys-color-surface-container-highest); box-shadow: inset 0 0 0 2px var(--md-sys-color-outline); transition: background-color .2s, box-shadow .2s; flex: none; }
-.themeThumb { position: absolute; top: 5px; left: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--md-sys-color-outline); transition: transform .2s, width .2s, height .2s, top .2s, background-color .2s; }
-.themeSwitch input:checked + .themeTrack { background: var(--md-sys-color-primary); box-shadow: none; }
-.themeSwitch input:checked + .themeTrack .themeThumb { top: 3px; width: 14px; height: 14px; transform: translateX(16px); background: var(--md-sys-color-on-primary); }
-.themeSwitch:hover .themeTrack { box-shadow: inset 0 0 0 2px var(--md-sys-color-on-surface-variant), 0 0 0 6px color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
-.themeSwitch input:checked:hover + .themeTrack, .themeSwitch:hover input:checked + .themeTrack { box-shadow: 0 0 0 6px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent); }
-.themeSwitch input:focus-visible + .themeTrack { outline: 2px solid var(--md-sys-color-primary); outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .themeTrack, .themeThumb { transition: none; } }
-.headerRight { grid-auto-flow: row; }
 .trace li { background: var(--md-sys-color-surface-container-lowest); color: var(--md-sys-color-on-surface-variant); border-left-color: var(--md-sys-color-outline-variant); }
+
+/* ---------- Тумблер «Расширенный режим» (MD3 switch) ---------- */
+.modeSwitch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font: 500 .875rem/1.25rem var(--md-font); color: var(--md-sys-color-on-surface); user-select: none; }
+.modeSwitch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switchTrack { position: relative; width: 40px; height: 22px; border-radius: var(--md-shape-full); background: var(--md-sys-color-surface-container-highest); box-shadow: inset 0 0 0 2px var(--md-sys-color-outline); transition: background-color .2s, box-shadow .2s; flex: none; }
+.switchThumb { position: absolute; top: 6px; left: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--md-sys-color-outline); transition: transform .2s, width .2s, height .2s, top .2s, background-color .2s; }
+.modeSwitch input:checked + .switchTrack { background: var(--md-sys-color-primary); box-shadow: none; }
+.modeSwitch input:checked + .switchTrack .switchThumb { top: 3px; width: 16px; height: 16px; transform: translateX(18px); background: var(--md-sys-color-on-primary); }
+.modeSwitch:hover .switchTrack { box-shadow: inset 0 0 0 2px var(--md-sys-color-on-surface-variant), 0 0 0 6px color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.modeSwitch:hover input:checked + .switchTrack { box-shadow: 0 0 0 6px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent); }
+.modeSwitch input:focus-visible + .switchTrack { outline: 2px solid var(--md-sys-color-primary); outline-offset: 3px; }
+
+/* ---------- Индикатор прогресса (MD3 linear indeterminate) ---------- */
+.progress { margin: 0 0 12px; }
+.progressBar { position: relative; height: 4px; overflow: hidden; border-radius: 2px; background: var(--md-sys-color-primary-container); }
+.progressBar span { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; border-radius: 2px; background: var(--md-sys-color-primary); animation: md-progress 1.4s cubic-bezier(.4, 0, .2, 1) infinite; }
+@keyframes md-progress { 0% { left: -40%; width: 30%; } 60% { width: 50%; } 100% { left: 100%; width: 30%; } }
+.progress p { margin: 6px 0 0; font: 500 .875rem/1.25rem var(--md-font); color: var(--md-sys-color-primary); }
+.progressTime { color: var(--md-sys-color-on-surface-variant); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* ---------- Кнопки итога и окно «Как агент пришёл к результату» ---------- */
+.resultActions { display: grid; gap: 8px; }
+.textButton { background: transparent; color: var(--md-sys-color-primary); justify-self: start; padding: 8px 12px; min-height: 36px; }
+.textButton:hover:not(:disabled) { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); box-shadow: none; }
+.textButton:disabled { background: transparent; }
+.traceDialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 64px); padding: 20px 24px; border: 0; border-radius: 28px; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface); box-shadow: var(--md-elevation-3); }
+.traceDialog::backdrop { background: rgba(0, 0, 0, .32); }
+.traceDialog .tableHead { position: sticky; top: -20px; background: inherit; padding: 4px 0 8px; z-index: 2; }
+@media (prefers-reduced-motion: reduce) { .switchTrack, .switchThumb { transition: none; } .progressBar span { animation-duration: 3s; } }
+button.secondary:disabled { background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent); color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); }
