@@ -169,36 +169,19 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
 }
 #skuPanel .tableHead { position: sticky; top: -16px; background: inherit; padding: 8px 0; z-index: 2; }
 
-/* ---------- Дашборд на один экран (десктоп, простой режим) ---------- */
-@media (min-width: 1024px) and (min-height: 640px) {
+/* ---------- Раскладка: обычная страница, на широком экране «Итог» и «Требует внимания» рядом ---------- */
+main { max-width: 1320px; padding: 20px 24px 40px; }
+@media (min-width: 1024px) {
   main:not(:has(#advancedOrders:not([hidden]))) {
-    height: 100vh; max-width: none; padding: 16px 24px; overflow: hidden;
-    display: grid; gap: 12px 16px; align-items: stretch;
+    display: grid; gap: 16px; align-items: start;
     grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.4fr);
-    grid-template-rows: auto auto auto auto minmax(0, 1fr);
-    grid-template-areas:
-      "header header"
-      "controls controls"
-      "progress progress"
-      "error error"
-      "result attention";
   }
-  main:not(:has(#advancedOrders:not([hidden]))) > header { grid-area: header; margin: 0; }
-  main:not(:has(#advancedOrders:not([hidden]))) > header p:not(.eyebrow) { display: none; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .controls { grid-area: controls; margin: 0; padding: 12px 16px; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .error { grid-area: error; margin: 0; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel { grid-area: result; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel { grid-area: attention; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .resultPanel,
-  main:not(:has(#advancedOrders:not([hidden]))) > .attentionPanel { margin: 0; min-height: 0; overflow: auto; }
-  main:not(:has(#advancedOrders:not([hidden]))) > .progress { grid-area: progress; margin: 0; }
-  main:not(:has(#advancedOrders:not([hidden]))) > #advancedSummary { display: none; }
-  main:not(:has(#advancedOrders:not([hidden]))) .simpleSummary .metric strong { font-size: 1.75rem; line-height: 2.25rem; }
-  main:not(:has(#advancedOrders:not([hidden]))) .attentionReason { white-space: normal; }
-  /* кнопка «Утвердить» всегда видна внизу панели «Итог» */
-  main:not(:has(#advancedOrders:not([hidden]))) .resultPanel .resultActions { position: sticky; bottom: -16px; padding: 8px 0 16px; background: var(--md-sys-color-surface-container); }
+  main > header, main > .controls, main > .progress, main > .error,
+  main > #advancedSummary, main > #advancedOrders { grid-column: 1 / -1; }
+  main > .panel, main > header { margin: 0; }
+  main > .resultPanel { grid-column: 1; }
+  main > .attentionPanel { grid-column: 2; }
 }
-
 /* Расширенный режим на десктопе: обычный поток со скроллом, но в стиле MD3 */
 @media (min-width: 901px) {
   main:has(#advancedOrders:not([hidden])) { max-width: 1600px; }
@@ -241,3 +224,14 @@ th, td { border-bottom: 1px solid var(--md-sys-color-outline-variant); padding: 
 .traceDialog .tableHead { position: sticky; top: -20px; background: inherit; padding: 4px 0 8px; z-index: 2; }
 @media (prefers-reduced-motion: reduce) { .switchTrack, .switchThumb { transition: none; } .progressBar span { animation-duration: 3s; } }
 button.secondary:disabled { background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent); color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); }
+
+/* ---------- Панель запуска: компактно, параметры всегда видны ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; max-width: 960px; }
+.controls .supplierControl { flex: 1 1 260px; min-width: 220px; max-width: 420px; }
+.controls .parameterFields { display: flex; gap: 12px; padding: 0; flex: 0 1 auto; }
+.controls .parameterFields label { min-width: 0; width: 150px; }
+.controls .parameterFields input { width: 100%; }
+.controls #plan { flex: none; }
+/* ---------- Дата и время в шапке ---------- */
+.clock { font: 400 .75rem/1rem var(--md-font); color: var(--md-sys-color-on-surface-variant); font-variant-numeric: tabular-nums; }
+.controls #plan { order: 3; } .controls .parameterFields { order: 2; } .controls .supplierControl { order: 1; } #progress { order: 4; }

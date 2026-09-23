@@ -312,6 +312,15 @@ async function approveOrder(format = 'csv') {
 $('approve').addEventListener('click', () => approveOrder('csv'));
 $('approveSimple').addEventListener('click', () => approveOrder('csv'));
 $('approveXlsx').addEventListener('click', () => approveOrder('xlsx'));
+// Дата и время в шапке: «Среда, 23 сентября 2026 · 16:35»
+function tickClock() {
+  const now = new Date();
+  const day = now.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(' г.', '');
+  const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  $('clock').textContent = `${day.charAt(0).toUpperCase()}${day.slice(1)} · ${time}`;
+  $('clock').dateTime = now.toISOString();
+}
+tickClock(); setInterval(tickClock, 15000);
 try { advancedMode = localStorage.getItem('purchasePlanMode') === 'advanced'; } catch { advancedMode = false; }
 setMode(advancedMode);
 if (location.protocol === 'file:') {
