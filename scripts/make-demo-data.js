@@ -36,6 +36,14 @@ const SCENARIOS = [
   { key: 'seasonal2', name: 'Прожектор светодиодный 50Вт', base: 3, line: 2, moq: 10, ownSeason: [0.5, 0.5, 0.7, 1.1, 1.4, 1.5, 1.5, 1.4, 1.2, 0.9, 0.7, 0.6] }
 ];
 
+// По четыре SKU в каждой группе. Их истории дают разные сезонные профили:
+// летний кабель, электроустановка и освещение с осенним спросом.
+const CATEGORY_BY_SCENARIO = {
+  seasonal: 'Кабель и монтаж', oneoff: 'Кабель и монтаж', slow: 'Кабель и монтаж', steady2: 'Кабель и монтаж',
+  steady: 'Электроустановка', stockout: 'Электроустановка', lowstock: 'Электроустановка', transit: 'Электроустановка',
+  growth: 'Освещение и защита', decline: 'Освещение и защита', steady3: 'Освещение и защита', seasonal2: 'Освещение и защита'
+};
+
 function makeManufacturer(label, prefix, codeBase, scale) {
   const dir = path.join(OUT, label);
   fs.mkdirSync(dir, { recursive: true });
@@ -93,8 +101,8 @@ function makeManufacturer(label, prefix, codeBase, scale) {
   const years = ['2024', '2025', '2026'];
   write('Сезонность (демо).xlsx', [[], [], ['год', ...SHORT, 'ИТОГО'],
     ...years.map(y => { const v = SHORT.map((_, i) => { const m = `${y}-${String(i + 1).padStart(2, '0')}`; return m < ym(AS_OF) ? Math.round(brandMonthMoney[m] || 0) : ''; }); return [y, ...v, v.reduce((a, b) => a + (b || 0), 0)]; })], 'Сезонность');
-  write('Товар в пути (демо).xlsx', [['Код 1с', 'Артикул', 'Наименование', 'УТ-0001 от 15 сентября 2026 г. (поступление до 15.10.2026)', 'Свободный остаток'],
-    ...skus.map(s => [s.code, s.article, s.name, transit[s.code] || '', freeStock[s.code]])], 'Лист1');
+  write('Товар в пути (демо).xlsx', [['Код 1с', 'Артикул', 'Наименование', 'УТ-0001 от 15 сентября 2026 г. (поступление до 15.10.2026)', 'Свободный остаток', 'Категория'],
+    ...skus.map(s => [s.code, s.article, s.name, transit[s.code] || '', freeStock[s.code], CATEGORY_BY_SCENARIO[s.key]])], 'Лист1');
   write('MOQ (демо).xlsx', [['№', 'Код 1с', 'Артикул поставщика', 'Наименование', 'Мин. разр. к отгр.'], ...skus.map((s, i) => [i + 1, s.code, s.article, s.name, s.moq])], 'Лист1');
   console.log(`${label}: ${skus.length} артикулов, ${lines.length} строк накладных`);
 }
