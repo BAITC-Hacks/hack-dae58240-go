@@ -176,7 +176,7 @@ main { max-width: 1320px; padding: 20px 24px 40px; }
     display: grid; gap: 16px; align-items: start;
     grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.4fr);
   }
-  main > header, main > .controls, main > .progress, main > .error,
+  main > header, main > .controls, main > .error,
   main > #advancedSummary, main > #advancedOrders { grid-column: 1 / -1; }
   main > .panel, main > header { margin: 0; }
   main > .resultPanel { grid-column: 1; }
@@ -225,13 +225,26 @@ main { max-width: 1320px; padding: 20px 24px 40px; }
 @media (prefers-reduced-motion: reduce) { .switchTrack, .switchThumb { transition: none; } .progressBar span { animation-duration: 3s; } }
 button.secondary:disabled { background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent); color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); }
 
-/* ---------- Панель запуска: компактно, параметры всегда видны ---------- */
-.controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; max-width: 960px; }
-.controls .supplierControl { flex: 1 1 260px; min-width: 220px; max-width: 420px; }
-.controls .parameterFields { display: flex; gap: 12px; padding: 0; flex: 0 1 auto; }
-.controls .parameterFields label { min-width: 0; width: 150px; }
-.controls .parameterFields input { width: 100%; }
-.controls #plan { flex: none; }
+/* ---------- Панель запуска: форма + источник данных + прогресс в одном блоке ---------- */
+.panel.controls { display: grid; gap: 12px; max-width: 960px; padding: 16px 20px; }
+.controlsRow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.controlsRow .supplierControl { order: 1; flex: 1 1 200px; min-width: 180px; max-width: 340px; }
+.controlsRow .parameterFields { order: 2; display: flex; gap: 12px; padding: 0; flex: 0 1 auto; }
+.controlsRow .parameterFields label { min-width: 0; width: 124px; }
+.controlsRow .parameterFields input { width: 100%; }
+.controlsRow #plan { order: 3; flex: none; min-height: 40px; }
+.controlsMeta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controlsMeta .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.controlsMeta .badge { min-height: 28px; padding: 2px 10px; font-size: .75rem; }
+.controls .progress { margin: 0; }
+.controls .progress[hidden] { display: none; }
+/* выпадающий список: своя стрелка внутри рамки */
+select {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2349454f' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; background-size: 24px;
+  cursor: pointer;
+}
 /* ---------- Дата и время в шапке ---------- */
 .clock { font: 400 .75rem/1rem var(--md-font); color: var(--md-sys-color-on-surface-variant); font-variant-numeric: tabular-nums; }
-.controls #plan { order: 3; } .controls .parameterFields { order: 2; } .controls .supplierControl { order: 1; } #progress { order: 4; }
