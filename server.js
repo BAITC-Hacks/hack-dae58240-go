@@ -227,6 +227,8 @@ function validApproval(body) {
     orders.every(row => row && typeof row.sku === 'string' && Object.hasOwn(known, row.sku) &&
       Number.isInteger(row.quantity) && row.quantity >= 0 && row.quantity <= 1000000 &&
       text(row.name) && text(row.rationale) && text(row.urgency) &&
+      ['stock', 'inTransit', 'forecast', 'safetyStock', 'moq'].every(k => row[k] === undefined || row[k] === null || Number.isFinite(row[k])) &&
+      (row.abc === undefined || row.abc === null || typeof row.abc === 'string') &&
       (row.flags === undefined || (Array.isArray(row.flags) && row.flags.every(f => typeof f === 'string'))));
 }
 app.post('/api/approve', (req, res) => {
